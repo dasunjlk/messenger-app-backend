@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Messenger Backend Test UI</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        max-width: 720px;
+        margin: 2rem auto;
+        padding: 0 1rem;
+      }
+
+      .actions {
+        display: flex;
+        gap: 0.75rem;
+        margin-bottom: 1rem;
+      }
+
+      button {
+        padding: 0.6rem 1rem;
+        border: 1px solid #333;
+        border-radius: 6px;
+        background: #fafafa;
+        cursor: pointer;
+      }
+
+      button:hover {
+        background: #f0f0f0;
+      }
+
+      pre {
+        min-height: 180px;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        padding: 1rem;
+        background: #111;
+        color: #f5f5f5;
+        overflow: auto;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Messenger Backend Commands</h1>
+    <p>Use the buttons below to call existing Go server endpoints.</p>
+
+    <div class="actions">
+      <button id="pingBtn" type="button">Run /ping</button>
+      <button id="usersBtn" type="button">Run /users</button>
+    </div>
+
+    <h2>Output</h2>
+    <pre id="output">Waiting for request...</pre>
+
+    <script>
+      const output = document.getElementById('output');
+
+      async function runCommand(endpoint) {
+        output.textContent = `Running GET ${endpoint}...`;
+
+        try {
+          const response = await fetch(endpoint);
+          const contentType = response.headers.get('content-type') || '';
+          const body = contentType.includes('application/json')
+            ? JSON.stringify(await response.json(), null, 2)
+            : await response.text();
+
+          output.textContent = `Status: ${response.status} ${response.statusText}\n\n${body}`;
+        } catch (error) {
+          output.textContent = `Request failed: ${error.message}`;
+        }
+      }
+
+      document.getElementById('pingBtn').addEventListener('click', () => runCommand('/ping'));
+      document.getElementById('usersBtn').addEventListener('click', () => runCommand('/users'));
+    </script>
+  </body>
+</html>
