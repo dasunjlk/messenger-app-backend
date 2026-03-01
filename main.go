@@ -6,29 +6,25 @@ import (
 	"net/http"
 )
 
-// User struct (mock data)
 type User struct {
 	ID       int    `json:"id"`
 	Username string `json:"username"`
 }
 
-// /ping handler
-func pingHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-		return
+// CORS middleware
+func enableCORS(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+		next(w, r)
 	}
+}
 
+func pingHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("pong"))
 }
 
-// /users handler
 func usersHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
 	users := []User{
 		{ID: 1, Username: "alice"},
 		{ID: 2, Username: "bob"},
@@ -39,15 +35,9 @@ func usersHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	mux := http.NewServeMux()
-	mux.HandleFunc("/ping", pingHandler)
-	mux.HandleFunc("/users", usersHandler)
+	http.HandleFunc("/ping", enableCORS(pingHandler))
+	http.HandleFunc("/users", enableCORS(usersHandler))
 
-	server := &http.Server{
-		Addr:    ":8080",
-		Handler: mux,
-	}
-
-	log.Println("Server started at http://localhost:8080")
-	log.Fatal(server.ListenAndServe())
+	log.Println("Server running at http://localhost:8080")
+	log.Fatal(http.ListenAndServe(":8080", nil))
 }

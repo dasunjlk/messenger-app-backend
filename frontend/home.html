@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Messenger App Test</title>
+    </head>
+    <body>
+        <h1>Messenger App Frontend</h1>
+
+        <button onclick="pingServer()">Ping Server</button>
+        <button onclick="loadUsers()">Load Users</button>
+
+        <pre id="output"></pre>
+
+        <script>
+            const API_URL = "http://localhost:8080";
+
+            async function pingServer() {
+              const res = await fetch(API_URL + "/ping");
+              const text = await res.text();
+              document.getElementById("output").innerText = text;
+            }
+
+            async function loadUsers() {
+              const res = await fetch(API_URL + "/users");
+              const data = await res.json();
+              document.getElementById("output").innerText = JSON.stringify(data, null, 2);
+            }
+        </script>
+    </body>
+</html>
