@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"path/filepath"
 )
 
 type User struct {
@@ -35,8 +36,27 @@ func usersHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+<<<<<<< HEAD
 	http.HandleFunc("/ping", enableCORS(pingHandler))
 	http.HandleFunc("/users", enableCORS(usersHandler))
+=======
+	mux := http.NewServeMux()
+	mux.HandleFunc("/ping", pingHandler)
+	mux.HandleFunc("/users", usersHandler)
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		if r.URL.Path != "/" {
+			http.NotFound(w, r)
+			return
+		}
+
+		http.ServeFile(w, r, filepath.Join(".", "index.html"))
+	})
+>>>>>>> 9d1ab020c8e7851f8475e1965a4d4c53af040761
 
 	log.Println("Server running at http://localhost:8080")
 	log.Fatal(http.ListenAndServe(":8080", nil))
