@@ -5,7 +5,42 @@
   <meta name="charset" content="UTF-8">
   <meta name="viewport" content="width=device-width, scale=1.0">
   <title>Login</title>
-  <link rel="stylesheet" href="" type="text/css">
+  <link rel="stylesheet" href="Style.css" type="text/css">
 </head>
+
+<body>
+  <video autoplay muted loop class="bg_video">
+    <source src="asserts/14478075_1920_1080_30fps.mp4" type="video/mp4">
+  </video>
+  <div class="container">
+    <div class="details">
+      <h5>Welcome</h5>
+      <p>Sign in to you account or Create new account</p>
+    </div><br>
+    <div class="button_options">
+      <button>Login</button>
+      <button>Register</button>
+    </div>
+    <div>
+      <form method="post" action="#">
+        <label for="username">Full Name</label><br />
+        <input type="text" id="fullname" name="fullname"><br />
+        <label for="mail">Email</label><br />
+        <input type="email" id="mail" name="mail"><br />
+        <label for="password">Password</label><br />
+        <input type="password" id="pw" name="pw"><br />
+        <label for="cpassword">Confirm Password</label><br />
+        <input type="password" id="cpw" name="cpw"><br />
+        <button type="submit">Sign In<span>Create Account</span></button>
+      </form>
+      <p>Forgot Password</p>
+      <hr>
+      <div class="login_options">
+        <a href="">Google</a>
+        <a href="">Apple</a>
+      </div>
+    </div>
+  </div>
+</body>
 
 </html>
