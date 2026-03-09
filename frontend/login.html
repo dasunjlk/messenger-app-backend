@@ -24,7 +24,8 @@
         <label for="password">Password</label>
         <input id="password" type="password" placeholder="Enter your password" required />
 
-        <p class="forgot-password"><a href="#">Forgot password?</a></p>
+        <p id="login-error" class="error-message hidden"></p>
+        <p class="forgot-password"><a href="#" id="show-forgot-link">Forgot password?</a></p>
 
         <button type="submit" class="primary-btn">Sign In</button>
 
@@ -56,6 +57,37 @@
           <a href="#" id="show-login-link">Already have an account? Sign in</a>
         </p>
       </form>
+
+      <form id="forgot-form" class="hidden">
+        <label for="forgot-email">Email</label>
+        <input id="forgot-email" type="email" placeholder="Enter your email" required />
+
+        <p id="forgot-error" class="error-message hidden"></p>
+
+        <button type="submit" class="primary-btn">Send Reset Link</button>
+
+        <p class="forgot-password">
+          <a href="#" id="back-to-login-link">Back to Sign In</a>
+        </p>
+      </form>
+
+      <form id="reset-form" class="hidden">
+        <input type="hidden" id="reset-token" />
+
+        <label for="reset-password">New Password</label>
+        <input id="reset-password" type="password" placeholder="Enter new password" required />
+
+        <label for="reset-confirm">Confirm New Password</label>
+        <input id="reset-confirm" type="password" placeholder="Confirm new password" required />
+
+        <p id="reset-error" class="error-message hidden"></p>
+
+        <button type="submit" class="primary-btn">Reset Password</button>
+
+        <p class="forgot-password">
+          <a href="#" id="reset-back-link">Back to Sign In</a>
+        </p>
+      </form>
     </section>
   </main>
   <script>
@@ -66,29 +98,166 @@
     const showRegisterBtn = document.getElementById('show-register-btn');
     const showLoginLink = document.getElementById('show-login-link');
     const registerError = document.getElementById('register-error');
+    const loginError = document.getElementById('login-error');
+    const forgotForm = document.getElementById('forgot-form');
+    const resetForm = document.getElementById('reset-form');
 
     function showLogin() {
       loginForm.classList.remove('hidden');
       registerForm.classList.add('hidden');
+      forgotForm.classList.add('hidden');
+      resetForm.classList.add('hidden');
       authTitle.textContent = 'Welcome Back';
       authSubtitle.textContent = 'Sign in to continue';
       registerError.classList.add('hidden');
       registerError.textContent = '';
+      loginError.classList.add('hidden');
+      loginError.textContent = '';
     }
 
     function showRegister() {
       loginForm.classList.add('hidden');
       registerForm.classList.remove('hidden');
+      forgotForm.classList.add('hidden');
+      resetForm.classList.add('hidden');
       authTitle.textContent = 'Create Account';
       authSubtitle.textContent = 'Sign up to get started';
       registerError.classList.add('hidden');
       registerError.textContent = '';
     }
 
+    function showForgot() {
+      loginForm.classList.add('hidden');
+      registerForm.classList.add('hidden');
+      forgotForm.classList.remove('hidden');
+      resetForm.classList.add('hidden');
+      authTitle.textContent = 'Forgot Password';
+      authSubtitle.textContent = 'Enter your email to get a reset link';
+      document.getElementById('forgot-error').classList.add('hidden');
+      document.getElementById('forgot-email').value = '';
+    }
+
+    function showReset(token) {
+      loginForm.classList.add('hidden');
+      registerForm.classList.add('hidden');
+      forgotForm.classList.add('hidden');
+      resetForm.classList.remove('hidden');
+      authTitle.textContent = 'Reset Password';
+      authSubtitle.textContent = 'Enter your new password';
+      document.getElementById('reset-token').value = token;
+      document.getElementById('reset-error').classList.add('hidden');
+      document.getElementById('reset-password').value = '';
+      document.getElementById('reset-confirm').value = '';
+    }
+
     showRegisterBtn.addEventListener('click', showRegister);
-    showLoginLink.addEventListener('click', (e) => {
+    showLoginLink.addEventListener('click', (e) => { e.preventDefault(); showLogin(); });
+    document.getElementById('show-forgot-link').addEventListener('click', (e) => { e.preventDefault(); showForgot(); });
+    document.getElementById('back-to-login-link').addEventListener('click', (e) => { e.preventDefault(); showLogin(); });
+    document.getElementById('reset-back-link').addEventListener('click', (e) => { e.preventDefault(); showLogin(); });
+
+    forgotForm.addEventListener('submit', async (e) => {
       e.preventDefault();
-      showLogin();
+      const email = document.getElementById('forgot-email').value.trim();
+      const errEl = document.getElementById('forgot-error');
+      errEl.classList.add('hidden');
+      const submitBtn = forgotForm.querySelector('button[type="submit"]');
+      submitBtn.disabled = true;
+      try {
+        const res = await fetch('/forgot-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email })
+        });
+        const json = await res.json().catch(() => ({}));
+        if (res.ok) {
+          showReset(json.token);
+        } else {
+          errEl.textContent = json.error || 'Something went wrong.';
+          errEl.classList.remove('hidden');
+        }
+      } catch (err) {
+        errEl.textContent = 'Unable to connect. Please try again later.';
+        errEl.classList.remove('hidden');
+      } finally {
+        submitBtn.disabled = false;
+      }
+    });
+
+    resetForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const token = document.getElementById('reset-token').value;
+      const newPassword = document.getElementById('reset-password').value;
+      const confirm = document.getElementById('reset-confirm').value;
+      const errEl = document.getElementById('reset-error');
+      errEl.classList.add('hidden');
+      if (newPassword.length < 6) {
+        errEl.textContent = 'Password must be at least 6 characters.';
+        errEl.classList.remove('hidden');
+        return;
+      }
+      if (newPassword !== confirm) {
+        errEl.textContent = 'Passwords do not match.';
+        errEl.classList.remove('hidden');
+        return;
+      }
+      const submitBtn = resetForm.querySelector('button[type="submit"]');
+      submitBtn.disabled = true;
+      try {
+        const res = await fetch('/reset-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token, newPassword })
+        });
+        const json = await res.json().catch(() => ({}));
+        if (res.ok) {
+          showLogin();
+          alert('Password updated successfully! You can now sign in.');
+        } else {
+          errEl.textContent = json.error || 'Reset failed. The link may have expired.';
+          errEl.classList.remove('hidden');
+        }
+      } catch (err) {
+        errEl.textContent = 'Unable to connect. Please try again later.';
+        errEl.classList.remove('hidden');
+      } finally {
+        submitBtn.disabled = false;
+      }
+    });
+
+    function showLoginError(msg) {
+      loginError.textContent = msg;
+      loginError.classList.remove('hidden');
+    }
+
+    loginForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+      if (!email || !password) {
+        showLoginError('Please enter email and password.');
+        return;
+      }
+      loginError.classList.add('hidden');
+      const submitBtn = loginForm.querySelector('button[type="submit"]');
+      submitBtn.disabled = true;
+      try {
+        const res = await fetch('/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+        const json = await res.json().catch(() => ({}));
+        if (res.ok) {
+          alert('Signed in as ' + (json.username || email) + '.');
+        } else {
+          showLoginError(json.error || 'Invalid email or password.');
+        }
+      } catch (err) {
+        showLoginError('Unable to connect. Please try again later.');
+      } finally {
+        submitBtn.disabled = false;
+      }
     });
 
     function showError(msg) {

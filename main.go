@@ -1,12 +1,15 @@
 package main
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"log"
 	"net/http"
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -29,11 +32,27 @@ type loginRequest struct {
 	Password string `json:"password"`
 }
 
+type forgotPasswordRequest struct {
+	Email string `json:"email"`
+}
+
+type resetPasswordRequest struct {
+	Token       string `json:"token"`
+	NewPassword string `json:"newPassword"`
+}
+
+type resetTokenData struct {
+	Email     string
+	ExpiresAt time.Time
+}
+
 var (
-	usersMu   sync.Mutex
-	users     = make(map[string]*User)
-	nextID    = 1
-	usersByID = make(map[int]*User)
+	usersMu      sync.Mutex
+	users        = make(map[string]*User)
+	nextID       = 1
+	usersByID    = make(map[int]*User)
+	resetTokens  = make(map[string]resetTokenData)
+	resetTokensMu sync.Mutex
 )
 
 // CORS middleware
@@ -180,6 +199,115 @@ func writeJSONError(w http.ResponseWriter, msg string, status int) {
 	json.NewEncoder(w).Encode(map[string]string{"error": msg})
 }
 
+func generateResetToken() (string, error) {
+	b := make([]byte, 32)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(b), nil
+}
+
+func forgetPasswordHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req forgotPasswordRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSONError(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	email := strings.TrimSpace(strings.ToLower(req.Email))
+	if email == "" {
+		writeJSONError(w, "Email is required", http.StatusBadRequest)
+		return
+	}
+
+	usersMu.Lock()
+	_, exists := users[email]
+	usersMu.Unlock()
+
+	if !exists {
+		writeJSONError(w, "No account found with that email", http.StatusNotFound)
+		return
+	}
+
+	token, err := generateResetToken()
+	if err != nil {
+		log.Printf("reset token error: %v", err)
+		writeJSONError(w, "Failed to generate reset token", http.StatusInternalServerError)
+		return
+	}
+
+	resetTokensMu.Lock()
+	resetTokens[token] = resetTokenData{Email: email, ExpiresAt: time.Now().Add(15 * time.Minute)}
+	resetTokensMu.Unlock()
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"token": token})
+}
+
+func resetPasswordHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req resetPasswordRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSONError(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	token := strings.TrimSpace(req.Token)
+	if token == "" {
+		writeJSONError(w, "Reset token is required", http.StatusBadRequest)
+		return
+	}
+	if len(req.NewPassword) < 6 {
+		writeJSONError(w, "Password must be at least 6 characters", http.StatusBadRequest)
+		return
+	}
+
+	hash, err := bcrypt.GenerateFromPassword([]byte(req.NewPassword), bcrypt.DefaultCost)
+	if err != nil {
+		log.Printf("bcrypt error: %v", err)
+		writeJSONError(w, "Failed to update password", http.StatusInternalServerError)
+		return
+	}
+
+	resetTokensMu.Lock()
+	data, exists := resetTokens[token]
+	if !exists {
+		resetTokensMu.Unlock()
+		writeJSONError(w, "Invalid or expired reset link", http.StatusBadRequest)
+		return
+	}
+	if time.Now().After(data.ExpiresAt) {
+		delete(resetTokens, token)
+		resetTokensMu.Unlock()
+		writeJSONError(w, "Reset link has expired. Please request a new one.", http.StatusBadRequest)
+		return
+	}
+	delete(resetTokens, token)
+	resetTokensMu.Unlock()
+
+	usersMu.Lock()
+	u, ok := users[data.Email]
+	if !ok {
+		usersMu.Unlock()
+		writeJSONError(w, "Account no longer exists", http.StatusBadRequest)
+		return
+	}
+	u.PasswordHash = string(hash)
+	usersMu.Unlock()
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"message": "Password updated successfully"})
+}
+
 func serveLoginPage(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -201,6 +329,8 @@ func main() {
 	mux.HandleFunc("/ping", enableCORS(pingHandler))
 	mux.HandleFunc("/users", enableCORS(usersHandler))
 	mux.HandleFunc("/register", enableCORS(registerHandler))
+	mux.HandleFunc("/forgot-password", enableCORS(forgetPasswordHandler))
+	mux.HandleFunc("/reset-password", enableCORS(resetPasswordHandler))
 	mux.HandleFunc("/login", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPost {
 			enableCORS(loginHandler)(w, r)
