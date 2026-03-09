@@ -24,6 +24,11 @@ type registerRequest struct {
 	Password string `json:"password"`
 }
 
+type loginRequest struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
 var (
 	usersMu   sync.Mutex
 	users     = make(map[string]*User)
@@ -129,18 +134,66 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func loginHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req loginRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSONError(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	email := strings.TrimSpace(strings.ToLower(req.Email))
+	if email == "" || req.Password == "" {
+		writeJSONError(w, "Email and password are required", http.StatusBadRequest)
+		return
+	}
+
+	usersMu.Lock()
+	u, exists := users[email]
+	usersMu.Unlock()
+
+	if !exists {
+		writeJSONError(w, "Invalid email or password", http.StatusUnauthorized)
+		return
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(u.PasswordHash), []byte(req.Password)); err != nil {
+		writeJSONError(w, "Invalid email or password", http.StatusUnauthorized)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"id":       u.ID,
+		"username": u.Username,
+		"email":    u.Email,
+	})
+}
+
 func writeJSONError(w http.ResponseWriter, msg string, status int) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	json.NewEncoder(w).Encode(map[string]string{"error": msg})
 }
 
-func serveLogin(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet || r.URL.Path != "/login" {
-		http.NotFound(w, r)
+func serveLoginPage(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 	http.ServeFile(w, r, filepath.Join(".", "frontend", "login.html"))
+}
+
+func serveFrontendFile(w http.ResponseWriter, r *http.Request, path string) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	http.ServeFile(w, r, filepath.Join(".", "frontend", path))
 }
 
 func main() {
@@ -148,7 +201,22 @@ func main() {
 	mux.HandleFunc("/ping", enableCORS(pingHandler))
 	mux.HandleFunc("/users", enableCORS(usersHandler))
 	mux.HandleFunc("/register", enableCORS(registerHandler))
-	mux.HandleFunc("/login", serveLogin)
+	mux.HandleFunc("/login", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost {
+			enableCORS(loginHandler)(w, r)
+			return
+		}
+		serveLoginPage(w, r)
+	})
+	mux.HandleFunc("/style.css", func(w http.ResponseWriter, r *http.Request) { serveFrontendFile(w, r, "style.css") })
+	mux.HandleFunc("/asserts/", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		path := strings.TrimPrefix(r.URL.Path, "/")
+		http.ServeFile(w, r, filepath.Join(".", "frontend", path))
+	})
 	mux.HandleFunc("/login/", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -156,25 +224,17 @@ func main() {
 		}
 		path := strings.TrimPrefix(r.URL.Path, "/login")
 		if path == "" || path == "/" {
-			http.ServeFile(w, r, filepath.Join(".", "frontend", "login.html"))
+			serveLoginPage(w, r)
 			return
 		}
-		if strings.HasPrefix(path, "/") {
-			http.ServeFile(w, r, filepath.Join(".", "frontend", strings.TrimPrefix(path, "/")))
-			return
-		}
-		http.NotFound(w, r)
+		serveFrontendFile(w, r, strings.TrimPrefix(path, "/"))
 	})
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet {
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
 		if r.URL.Path != "/" {
 			http.NotFound(w, r)
 			return
 		}
-		http.ServeFile(w, r, filepath.Join(".", "index.html"))
+		serveLoginPage(w, r)
 	})
 
 	log.Println("Server running at http://localhost:8080")
