@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Messenger</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+
+<body>
+  <main class="auth-container">
+    <section class="auth-card">
+      <h1>Messenger</h1>
+      <p class="subtitle" id="profile-info">Loading...</p>
+      <div id="auth-actions">
+        <a href="/login" class="primary-btn" style="display:block;text-align:center;text-decoration:none;padding:0.78rem;">Sign In</a>
+        <p class="forgot-password" style="margin-top:1rem;">
+          <a href="/register.html">Create Account</a>
+        </p>
+      </div>
+      <div id="profile-content" class="hidden">
+        <pre id="profile-data"></pre>
+        <button type="button" class="secondary-btn" id="logout-btn">Logout</button>
+      </div>
+    </section>
+  </main>
+  <script>
+    const token = localStorage.getItem('token');
+    const profileInfo = document.getElementById('profile-info');
+    const authActions = document.getElementById('auth-actions');
+    const profileContent = document.getElementById('profile-content');
+    const profileData = document.getElementById('profile-data');
+    const logoutBtn = document.getElementById('logout-btn');
+
+    if (!token) {
+      profileInfo.textContent = 'Sign in to continue';
+    } else {
+      profileInfo.textContent = 'Fetching profile...';
+      fetch('/profile', {
+        headers: { 'Authorization': 'Bearer ' + token }
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data.error) {
+            localStorage.removeItem('token');
+            profileInfo.textContent = 'Session expired. Please sign in again.';
+          } else {
+            profileInfo.classList.add('hidden');
+            authActions.classList.add('hidden');
+            profileContent.classList.remove('hidden');
+            profileData.textContent = JSON.stringify(data, null, 2);
+          }
+        })
+        .catch(() => {
+          profileInfo.textContent = 'Unable to fetch profile.';
+        });
+    }
+
+    logoutBtn.addEventListener('click', () => {
+      localStorage.removeItem('token');
+      window.location.reload();
+    });
+  </script>
+</body>
+
+</html>
