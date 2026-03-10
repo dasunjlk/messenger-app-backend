@@ -1,335 +1,48 @@
-<!doctype html>
-<html lang="en">
+<!DOCTYPE html>
+<html>
 
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="charset" content="UTF-8">
+  <meta name="viewport" content="width=device-width, scale=1.0">
   <title>Login</title>
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="Style.css" type="text/css">
 </head>
 
 <body>
-  <video autoplay muted loop>
+  <video autoplay muted loop class="bg_video">
     <source src="asserts/14478075_1920_1080_30fps.mp4" type="video/mp4">
   </video>
-  <main class="auth-container">
-    <section class="auth-card">
-      <h1 id="auth-title">Welcome Back</h1>
-      <p class="subtitle" id="auth-subtitle">Sign in to continue</p>
-
-      <form id="login-form">
-        <label for="email">Email</label>
-        <input id="email" type="email" placeholder="Enter your email" required />
-
-        <label for="password">Password</label>
-        <input id="password" type="password" placeholder="Enter your password" required />
-
-        <p id="login-error" class="error-message hidden"></p>
-        <p class="forgot-password"><a href="#" id="show-forgot-link">Forgot password?</a></p>
-
-        <button type="submit" class="primary-btn">Sign In</button>
-
-        <div class="divider">
-          <hr />
-          <p>or continue with</p>
-          <button type="button" class="secondary-btn" id="show-register-btn">Create Account</button>
-        </div>
+  <div class="container">
+    <div class="details">
+      <h5>Welcome</h5>
+      <p>Sign in to you account or Create new account</p>
+    </div><br>
+    <div class="button_options">
+      <button>Login</button>
+      <button>Register</button>
+    </div>
+    <div class="forem">
+      <form method="post" action="#">
+        <label for="username">Full Name</label><br />
+        <input type="text" id="fullname" name="fullname"><br />
+        <label for="mail">Email</label><br />
+        <input type="email" id="mail" name="mail"><br />
+        <label for="password">Password</label><br />
+        <input type="password" id="pw" name="pw"><br />
+        <label for="cpassword">Confirm Password</label><br />
+        <input type="password" id="cpw" name="cpw"><br />
+        <button type="submit">Sign In<span>Create Account</span></button>
       </form>
-
-      <form id="register-form" class="hidden">
-        <label for="reg-email">Email</label>
-        <input id="reg-email" type="email" placeholder="Enter your email" required />
-
-        <label for="reg-username">Username</label>
-        <input id="reg-username" type="text" placeholder="Choose a username" required />
-
-        <label for="reg-password">Password</label>
-        <input id="reg-password" type="password" placeholder="Create a password" required />
-
-        <label for="reg-confirm">Confirm Password</label>
-        <input id="reg-confirm" type="password" placeholder="Confirm your password" required />
-
-        <p id="register-error" class="error-message hidden"></p>
-
-        <button type="submit" class="primary-btn">Create Account</button>
-
-        <p class="forgot-password">
-          <a href="#" id="show-login-link">Already have an account? Sign in</a>
-        </p>
-      </form>
-
-      <form id="forgot-form" class="hidden">
-        <label for="forgot-email">Email</label>
-        <input id="forgot-email" type="email" placeholder="Enter your email" required />
-
-        <p id="forgot-error" class="error-message hidden"></p>
-
-        <button type="submit" class="primary-btn">Send Reset Link</button>
-
-        <p class="forgot-password">
-          <a href="#" id="back-to-login-link">Back to Sign In</a>
-        </p>
-      </form>
-
-      <form id="reset-form" class="hidden">
-        <input type="hidden" id="reset-token" />
-
-        <label for="reset-password">New Password</label>
-        <input id="reset-password" type="password" placeholder="Enter new password" required />
-
-        <label for="reset-confirm">Confirm New Password</label>
-        <input id="reset-confirm" type="password" placeholder="Confirm new password" required />
-
-        <p id="reset-error" class="error-message hidden"></p>
-
-        <button type="submit" class="primary-btn">Reset Password</button>
-
-        <p class="forgot-password">
-          <a href="#" id="reset-back-link">Back to Sign In</a>
-        </p>
-      </form>
-    </section>
-  </main>
-  <script>
-    const loginForm = document.getElementById('login-form');
-    const registerForm = document.getElementById('register-form');
-    const authTitle = document.getElementById('auth-title');
-    const authSubtitle = document.getElementById('auth-subtitle');
-    const showRegisterBtn = document.getElementById('show-register-btn');
-    const showLoginLink = document.getElementById('show-login-link');
-    const registerError = document.getElementById('register-error');
-    const loginError = document.getElementById('login-error');
-    const forgotForm = document.getElementById('forgot-form');
-    const resetForm = document.getElementById('reset-form');
-
-    function showLogin() {
-      loginForm.classList.remove('hidden');
-      registerForm.classList.add('hidden');
-      forgotForm.classList.add('hidden');
-      resetForm.classList.add('hidden');
-      authTitle.textContent = 'Welcome Back';
-      authSubtitle.textContent = 'Sign in to continue';
-      registerError.classList.add('hidden');
-      registerError.textContent = '';
-      loginError.classList.add('hidden');
-      loginError.textContent = '';
-    }
-
-    function showRegister() {
-      loginForm.classList.add('hidden');
-      registerForm.classList.remove('hidden');
-      forgotForm.classList.add('hidden');
-      resetForm.classList.add('hidden');
-      authTitle.textContent = 'Create Account';
-      authSubtitle.textContent = 'Sign up to get started';
-      registerError.classList.add('hidden');
-      registerError.textContent = '';
-    }
-
-    function showForgot() {
-      loginForm.classList.add('hidden');
-      registerForm.classList.add('hidden');
-      forgotForm.classList.remove('hidden');
-      resetForm.classList.add('hidden');
-      authTitle.textContent = 'Forgot Password';
-      authSubtitle.textContent = 'Enter your email to get a reset link';
-      document.getElementById('forgot-error').classList.add('hidden');
-      document.getElementById('forgot-email').value = '';
-    }
-
-    function showReset(token) {
-      loginForm.classList.add('hidden');
-      registerForm.classList.add('hidden');
-      forgotForm.classList.add('hidden');
-      resetForm.classList.remove('hidden');
-      authTitle.textContent = 'Reset Password';
-      authSubtitle.textContent = 'Enter your new password';
-      document.getElementById('reset-token').value = token;
-      document.getElementById('reset-error').classList.add('hidden');
-      document.getElementById('reset-password').value = '';
-      document.getElementById('reset-confirm').value = '';
-    }
-
-    showRegisterBtn.addEventListener('click', showRegister);
-    showLoginLink.addEventListener('click', (e) => { e.preventDefault(); showLogin(); });
-    document.getElementById('show-forgot-link').addEventListener('click', (e) => { e.preventDefault(); showForgot(); });
-    document.getElementById('back-to-login-link').addEventListener('click', (e) => { e.preventDefault(); showLogin(); });
-    document.getElementById('reset-back-link').addEventListener('click', (e) => { e.preventDefault(); showLogin(); });
-
-    forgotForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const email = document.getElementById('forgot-email').value.trim();
-      const errEl = document.getElementById('forgot-error');
-      errEl.classList.add('hidden');
-      const submitBtn = forgotForm.querySelector('button[type="submit"]');
-      submitBtn.disabled = true;
-      try {
-        const res = await fetch('/forgot-password', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email })
-        });
-        const json = await res.json().catch(() => ({}));
-        if (res.ok) {
-          showReset(json.token);
-        } else {
-          errEl.textContent = json.error || 'Something went wrong.';
-          errEl.classList.remove('hidden');
-        }
-      } catch (err) {
-        errEl.textContent = 'Unable to connect. Please try again later.';
-        errEl.classList.remove('hidden');
-      } finally {
-        submitBtn.disabled = false;
-      }
-    });
-
-    resetForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const token = document.getElementById('reset-token').value;
-      const newPassword = document.getElementById('reset-password').value;
-      const confirm = document.getElementById('reset-confirm').value;
-      const errEl = document.getElementById('reset-error');
-      errEl.classList.add('hidden');
-      if (newPassword.length < 6) {
-        errEl.textContent = 'Password must be at least 6 characters.';
-        errEl.classList.remove('hidden');
-        return;
-      }
-      if (newPassword !== confirm) {
-        errEl.textContent = 'Passwords do not match.';
-        errEl.classList.remove('hidden');
-        return;
-      }
-      const submitBtn = resetForm.querySelector('button[type="submit"]');
-      submitBtn.disabled = true;
-      try {
-        const res = await fetch('/reset-password', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ token, newPassword })
-        });
-        const json = await res.json().catch(() => ({}));
-        if (res.ok) {
-          showLogin();
-          alert('Password updated successfully! You can now sign in.');
-        } else {
-          errEl.textContent = json.error || 'Reset failed. The link may have expired.';
-          errEl.classList.remove('hidden');
-        }
-      } catch (err) {
-        errEl.textContent = 'Unable to connect. Please try again later.';
-        errEl.classList.remove('hidden');
-      } finally {
-        submitBtn.disabled = false;
-      }
-    });
-
-    function showLoginError(msg) {
-      loginError.textContent = msg;
-      loginError.classList.remove('hidden');
-    }
-
-    loginForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const email = document.getElementById('email').value.trim();
-      const password = document.getElementById('password').value;
-      if (!email || !password) {
-        showLoginError('Please enter email and password.');
-        return;
-      }
-      loginError.classList.add('hidden');
-      const submitBtn = loginForm.querySelector('button[type="submit"]');
-      submitBtn.disabled = true;
-      try {
-        const res = await fetch('/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, password })
-        });
-        const json = await res.json().catch(() => ({}));
-        if (res.ok) {
-          alert('Signed in as ' + (json.username || email) + '.');
-        } else {
-          showLoginError(json.error || 'Invalid email or password.');
-        }
-      } catch (err) {
-        showLoginError('Unable to connect. Please try again later.');
-      } finally {
-        submitBtn.disabled = false;
-      }
-    });
-
-    function showError(msg) {
-      registerError.textContent = msg;
-      registerError.classList.remove('hidden');
-    }
-
-    function validateRegister() {
-      const email = document.getElementById('reg-email').value.trim();
-      const username = document.getElementById('reg-username').value.trim();
-      const password = document.getElementById('reg-password').value;
-      const confirm = document.getElementById('reg-confirm').value;
-
-      if (!email) {
-        showError('Please enter your email.');
-        return null;
-      }
-      const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRe.test(email)) {
-        showError('Please enter a valid email address.');
-        return null;
-      }
-      if (!username) {
-        showError('Please choose a username.');
-        return null;
-      }
-      if (!password) {
-        showError('Please enter a password.');
-        return null;
-      }
-      if (password.length < 6) {
-        showError('Password must be at least 6 characters.');
-        return null;
-      }
-      if (password !== confirm) {
-        showError('Passwords do not match.');
-        return null;
-      }
-      return { email, username, password };
-    }
-
-    registerForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const data = validateRegister();
-      if (!data) return;
-
-      registerError.classList.add('hidden');
-      const submitBtn = registerForm.querySelector('button[type="submit"]');
-      submitBtn.disabled = true;
-
-      try {
-        const res = await fetch('/register', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(data)
-        });
-        const json = await res.json().catch(() => ({}));
-
-        if (res.ok) {
-          showLogin();
-          registerForm.reset();
-          alert('Account created successfully! You can now sign in.');
-        } else {
-          showError(json.error || 'Registration failed. Please try again.');
-        }
-      } catch (err) {
-        showError('Unable to connect. Please try again later.');
-      } finally {
-        submitBtn.disabled = false;
-      }
-    });
-  </script>
+      <a href="#">Forgot Password</a>
+      <hr>
+      <p>Or continue with</p>
+      <div class="login_options">
+        <a href="#"><img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg">Google</a>
+        <a href="#"><img
+            src="https://purepng.com/public/uploads/large/purepng.com-apple-logologobrand-logoiconslogos-251519938788qhgdl.png">Apple</a>
+      </div>
+    </div>
+  </div>
 </body>
 
 </html>
