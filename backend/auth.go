@@ -88,14 +88,13 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var id int
-	err = DB.QueryRow(
-		`INSERT INTO users (username, email, password_hash) OUTPUT INSERTED.id VALUES (@p1, @p2, @p3)`,
+	result, err := DB.Exec(
+		`INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?)`,
 		username, email, string(hash),
-	).Scan(&id)
-
+	)
 	if err != nil {
-		if strings.Contains(err.Error(), "duplicate key") || strings.Contains(err.Error(), "unique constraint") || strings.Contains(err.Error(), "UNIQUE KEY") ||
+		if strings.Contains(err.Error(), "Duplicate") || strings.Contains(err.Error(), "duplicate key") ||
+			strings.Contains(err.Error(), "unique constraint") || strings.Contains(err.Error(), "UNIQUE KEY") ||
 			strings.Contains(err.Error(), "Violation of UNIQUE KEY") {
 			writeJSONError(w, "username or email already exists", http.StatusConflict)
 			return
@@ -103,6 +102,8 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 		logRequestError(w, "database error", err)
 		return
 	}
+	id64, _ := result.LastInsertId()
+	id := int(id64)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
@@ -136,7 +137,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	var username string
 	var passwordHash string
 	err := DB.QueryRow(
-		`SELECT id, username, password_hash FROM users WHERE email = @p1`,
+		`SELECT id, username, password_hash FROM users WHERE email = ?`,
 		email,
 	).Scan(&id, &username, &passwordHash)
 

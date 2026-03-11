@@ -8,7 +8,7 @@ This guide explains how to integrate and run the new authentication system.
 messenger-app-backend/
 ├── backend/
 │   ├── main.go      # Server entry point, routes, CORS
-│   ├── db.go        # SQL Server connection, users table
+│   ├── db.go        # MySQL connection, users table
 │   ├── auth.go      # Register, Login handlers, JWT
 │   └── middleware.go # JWT auth middleware
 ├── frontend/
@@ -22,23 +22,23 @@ messenger-app-backend/
 
 ## Prerequisites
 
-1. **Microsoft SQL Server** installed and running
+1. **MySQL** installed and running
 2. **Go 1.22+**
 3. A database named `messenger` (or adjust `DATABASE_URL`)
 
 ## Step 1: Create the Database
 
 ```sql
--- In SQL Server Management Studio or sqlcmd
+-- In MySQL client (mysql, MySQL Workbench, etc.)
 CREATE DATABASE messenger;
 ```
 
 ## Step 2: Set Environment Variables (Optional)
 
 ```bash
-# Default: sqlserver://sa:YourPassword@localhost:1433?database=messenger
-# Format: sqlserver://USER:PASSWORD@HOST:PORT?database=DBNAME
-export DATABASE_URL="sqlserver://USER:PASSWORD@localhost:1433?database=messenger"
+# Default: root:YourPassword@tcp(localhost:3306)/messenger
+# Format: USER:PASSWORD@tcp(HOST:PORT)/DBNAME
+export DATABASE_URL="user:password@tcp(localhost:3306)/messenger"
 ```
 
 # For production, also set a secure JWT secret (edit backend/auth.go or add env var)
