@@ -1,181 +1,48 @@
-<!doctype html>
-<html lang="en">
+<!DOCTYPE html>
+<html>
 
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="charset" content="UTF-8">
+  <meta name="viewport" content="width=device-width, scale=1.0">
   <title>Login</title>
-  <link rel="stylesheet" href="/style.css" />
+  <link rel="stylesheet" href="Style.css" type="text/css">
 </head>
 
 <body>
-  <video autoplay muted loop>
-    <source src="/asserts/14478075_1920_1080_30fps.mp4" type="video/mp4">
+  <video autoplay muted loop class="bg_video">
+    <source src="asserts/14478075_1920_1080_30fps.mp4" type="video/mp4">
   </video>
-  <main class="auth-container">
-    <section class="auth-card">
-      <h1 id="auth-title">Welcome Back</h1>
-      <p class="subtitle" id="auth-subtitle">Sign in to continue</p>
-
-      <form id="login-form">
-        <label for="email">Email</label>
-        <input id="email" type="email" placeholder="Enter your email" required />
-
-        <label for="password">Password</label>
-        <input id="password" type="password" placeholder="Enter your password" required />
-
-        <p id="login-error" class="error-message hidden"></p>
-        <p class="forgot-password"><a href="#">Forgot password?</a></p>
-
-        <button type="submit" class="primary-btn">Sign In</button>
-
-        <div class="divider">
-          <hr />
-          <p>or continue with</p>
-          <button type="button" class="secondary-btn" id="show-register-btn">Create Account</button>
-        </div>
+  <div class="container">
+    <div class="details">
+      <h5>Welcome</h5>
+      <p>Sign in to you account or Create new account</p>
+    </div><br>
+    <div class="button_options">
+      <button>Login</button>
+      <button>Register</button>
+    </div>
+    <div class="forem">
+      <form method="post" action="#">
+        <label for="username">Full Name</label><br />
+        <input type="text" id="fullname" name="fullname"><br />
+        <label for="mail">Email</label><br />
+        <input type="email" id="mail" name="mail"><br />
+        <label for="password">Password</label><br />
+        <input type="password" id="pw" name="pw"><br />
+        <label for="cpassword">Confirm Password</label><br />
+        <input type="password" id="cpw" name="cpw"><br />
+        <button type="submit">Sign In<span>Create Account</span></button>
       </form>
-
-      <form id="register-form" class="hidden">
-        <label for="reg-email">Email</label>
-        <input id="reg-email" type="email" placeholder="Enter your email" required />
-
-        <label for="reg-username">Username</label>
-        <input id="reg-username" type="text" placeholder="Choose a username" required />
-
-        <label for="reg-password">Password</label>
-        <input id="reg-password" type="password" placeholder="Create a password" required />
-
-        <label for="reg-confirm">Confirm Password</label>
-        <input id="reg-confirm" type="password" placeholder="Confirm your password" required />
-
-        <p id="register-error" class="error-message hidden"></p>
-
-        <button type="submit" class="primary-btn">Create Account</button>
-
-        <p class="forgot-password">
-          <a href="#" id="show-login-link">Already have an account? Sign in</a>
-        </p>
-      </form>
-    </section>
-  </main>
-  <script>
-    const loginForm = document.getElementById('login-form');
-    const registerForm = document.getElementById('register-form');
-    const authTitle = document.getElementById('auth-title');
-    const authSubtitle = document.getElementById('auth-subtitle');
-    const showRegisterBtn = document.getElementById('show-register-btn');
-    const showLoginLink = document.getElementById('show-login-link');
-    const registerError = document.getElementById('register-error');
-    const loginError = document.getElementById('login-error');
-
-    function showLogin() {
-      loginForm.classList.remove('hidden');
-      registerForm.classList.add('hidden');
-      authTitle.textContent = 'Welcome Back';
-      authSubtitle.textContent = 'Sign in to continue';
-      registerError.classList.add('hidden');
-      registerError.textContent = '';
-      loginError.classList.add('hidden');
-      loginError.textContent = '';
-    }
-
-    function showRegister() {
-      loginForm.classList.add('hidden');
-      registerForm.classList.remove('hidden');
-      authTitle.textContent = 'Create Account';
-      authSubtitle.textContent = 'Sign up to get started';
-      registerError.classList.add('hidden');
-      registerError.textContent = '';
-    }
-
-    showRegisterBtn.addEventListener('click', showRegister);
-    showLoginLink.addEventListener('click', (e) => { e.preventDefault(); showLogin(); });
-
-    function showLoginError(msg) {
-      loginError.textContent = msg;
-      loginError.classList.remove('hidden');
-    }
-
-    function showError(msg) {
-      registerError.textContent = msg;
-      registerError.classList.remove('hidden');
-    }
-
-    loginForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const email = document.getElementById('email').value.trim();
-      const password = document.getElementById('password').value;
-      if (!email || !password) {
-        showLoginError('Please enter email and password.');
-        return;
-      }
-      loginError.classList.add('hidden');
-      const submitBtn = loginForm.querySelector('button[type="submit"]');
-      submitBtn.disabled = true;
-      try {
-        const res = await fetch('/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, password })
-        });
-        const json = await res.json().catch(() => ({}));
-        if (res.ok) {
-          localStorage.setItem('token', json.token);
-          alert('Signed in as ' + (json.username || email) + '.');
-          window.location.href = '/'; // index.html shows profile
-        } else {
-          showLoginError(json.error || 'Invalid email or password.');
-        }
-      } catch (err) {
-        showLoginError('Unable to connect. Please try again later.');
-      } finally {
-        submitBtn.disabled = false;
-      }
-    });
-
-    function validateRegister() {
-      const email = document.getElementById('reg-email').value.trim();
-      const username = document.getElementById('reg-username').value.trim();
-      const password = document.getElementById('reg-password').value;
-      const confirm = document.getElementById('reg-confirm').value;
-      if (!email) { showError('Please enter your email.'); return null; }
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showError('Please enter a valid email.'); return null; }
-      if (!username) { showError('Please choose a username.'); return null; }
-      if (!password) { showError('Please enter a password.'); return null; }
-      if (password.length < 6) { showError('Password must be at least 6 characters.'); return null; }
-      if (password !== confirm) { showError('Passwords do not match.'); return null; }
-      return { email, username, password };
-    }
-
-    registerForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const data = validateRegister();
-      if (!data) return;
-      registerError.classList.add('hidden');
-      const submitBtn = registerForm.querySelector('button[type="submit"]');
-      submitBtn.disabled = true;
-      try {
-        const res = await fetch('/register', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(data)
-        });
-        const json = await res.json().catch(() => ({}));
-        if (res.ok) {
-          showLogin();
-          registerForm.reset();
-          alert('Account created successfully! You can now sign in.');
-        } else {
-          showError(json.error || 'Registration failed.');
-        }
-      } catch (err) {
-        showError('Unable to connect. Please try again later.');
-      } finally {
-        submitBtn.disabled = false;
-      }
-    });
-  </script>
+      <a href="#">Forgot Password</a>
+      <hr>
+      <p>Or continue with</p>
+      <div class="login_options">
+        <a href="#"><img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg">Google</a>
+        <a href="#"><img
+            src="https://purepng.com/public/uploads/large/purepng.com-apple-logologobrand-logoiconslogos-251519938788qhgdl.png">Apple</a>
+      </div>
+    </div>
+  </div>
 </body>
 
 </html>
