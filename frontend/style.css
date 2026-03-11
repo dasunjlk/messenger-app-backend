@@ -9,6 +9,9 @@ body {
     justify-content: center;
     align-items: center;
     min-height: 100vh;
+    font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    color: #e2e8f0;
+    background: radial-gradient(120% 120% at 20% 20%, #1e293b 0%, #0f172a 55%, #0b1220 100%);
 }
 
 .bg_video {
@@ -188,4 +191,162 @@ body {
     background-size: contain;
     background-repeat: no-repeat;
     background-position: center;
+}
+
+/* ---------- Auth screens (home/index + register) ---------- */
+.auth-container {
+    display: grid;
+    place-items: center;
+    min-height: 100vh;
+    width: 100%;
+    padding: 2rem 1.25rem;
+    background: radial-gradient(140% 140% at 10% 10%, rgba(94, 234, 212, 0.12), transparent 40%),
+        radial-gradient(160% 160% at 90% 20%, rgba(94, 129, 244, 0.18), transparent 45%),
+        radial-gradient(160% 160% at 50% 80%, rgba(248, 113, 113, 0.18), transparent 45%),
+        rgba(11, 18, 32, 0.72);
+    backdrop-filter: blur(10px);
+}
+
+.auth-card {
+    width: min(460px, 100%);
+    padding: 2.25rem 2rem;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 18px;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+    backdrop-filter: blur(16px);
+}
+
+.auth-card h1 {
+    font-size: 1.9rem;
+    margin-bottom: 0.35rem;
+    color: #e2e8f0;
+    letter-spacing: 0.01em;
+}
+
+.subtitle {
+    color: #cbd5e1;
+    margin-bottom: 1.5rem;
+    font-size: 0.95rem;
+}
+
+label {
+    display: block;
+    margin: 0.6rem 0 0.25rem;
+    font-weight: 600;
+    color: #cbd5e1;
+    font-size: 0.92rem;
+}
+
+input {
+    width: 100%;
+    padding: 0.75rem 0.85rem;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    background: rgba(255, 255, 255, 0.07);
+    color: #e2e8f0;
+    outline: none;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+input:focus {
+    border-color: #60a5fa;
+    box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.25);
+}
+
+.primary-btn,
+.secondary-btn,
+button[type="submit"] {
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    gap: 0.4rem;
+    width: 100%;
+    margin-top: 1rem;
+    padding: 0.9rem 1rem;
+    border-radius: 12px;
+    font-weight: 700;
+    font-size: 0.98rem;
+    cursor: pointer;
+    border: none;
+    text-decoration: none;
+    transition: transform 0.2s ease, box-shadow 0.25s ease, background 0.2s ease;
+}
+
+.primary-btn {
+    background: linear-gradient(120deg, #60a5fa, #34d399);
+    color: #0b1220;
+    box-shadow: 0 12px 30px rgba(52, 211, 153, 0.25);
+}
+
+.primary-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 14px 36px rgba(52, 211, 153, 0.35);
+}
+
+.secondary-btn {
+    background: rgba(255, 255, 255, 0.08);
+    color: #e2e8f0;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+.secondary-btn:hover {
+    background: rgba(255, 255, 255, 0.12);
+    transform: translateY(-1px);
+}
+
+.forgot-password {
+    text-align: center;
+    margin-top: 0.9rem;
+}
+
+.forgot-password a {
+    color: #93c5fd;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.forgot-password a:hover {
+    text-decoration: underline;
+}
+
+.error-message {
+    color: #fca5a5;
+    background: rgba(248, 113, 113, 0.12);
+    border: 1px solid rgba(248, 113, 113, 0.35);
+    padding: 0.65rem 0.8rem;
+    border-radius: 10px;
+    margin-top: 0.75rem;
+}
+
+.hidden {
+    display: none !important;
+}
+
+.auth-card pre {
+    margin-top: 1rem;
+    padding: 0.75rem;
+    background: rgba(15, 23, 42, 0.7);
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: #e2e8f0;
+    white-space: pre-wrap;
+}
+
+/* Make background video sit behind auth screens */
+video:not(.bg_video) {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    z-index: -2;
+    filter: brightness(0.7);
+}
+
+@media (max-width: 480px) {
+    .auth-card {
+        padding: 1.75rem 1.25rem;
+    }
 }
