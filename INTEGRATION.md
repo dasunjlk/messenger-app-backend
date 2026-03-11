@@ -8,7 +8,7 @@ This guide explains how to integrate and run the new authentication system.
 messenger-app-backend/
 ├── backend/
 │   ├── main.go      # Server entry point, routes, CORS
-│   ├── db.go        # PostgreSQL connection, users table
+│   ├── db.go        # SQL Server connection, users table
 │   ├── auth.go      # Register, Login handlers, JWT
 │   └── middleware.go # JWT auth middleware
 ├── frontend/
@@ -22,25 +22,24 @@ messenger-app-backend/
 
 ## Prerequisites
 
-1. **PostgreSQL** installed and running
+1. **Microsoft SQL Server** installed and running
 2. **Go 1.22+**
 3. A database named `messenger` (or adjust `DATABASE_URL`)
 
 ## Step 1: Create the Database
 
-```bash
-# Using psql
-createdb messenger
-
-# Or via PostgreSQL CLI
-psql -U postgres -c "CREATE DATABASE messenger;"
+```sql
+-- In SQL Server Management Studio or sqlcmd
+CREATE DATABASE messenger;
 ```
 
 ## Step 2: Set Environment Variables (Optional)
 
 ```bash
-# Default: postgres://postgres:postgres@localhost:5432/messenger?sslmode=disable
-export DATABASE_URL="postgres://USER:PASSWORD@HOST:5432/DBNAME?sslmode=disable"
+# Default: sqlserver://sa:YourPassword@localhost:1433?database=messenger
+# Format: sqlserver://USER:PASSWORD@HOST:PORT?database=DBNAME
+export DATABASE_URL="sqlserver://USER:PASSWORD@localhost:1433?database=messenger"
+```
 
 # For production, also set a secure JWT secret (edit backend/auth.go or add env var)
 ```

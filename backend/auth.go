@@ -90,12 +90,13 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 
 	var id int
 	err = DB.QueryRow(
-		`INSERT INTO users (username, email, password_hash) VALUES ($1, $2, $3) RETURNING id`,
+		`INSERT INTO users (username, email, password_hash) OUTPUT INSERTED.id VALUES (@p1, @p2, @p3)`,
 		username, email, string(hash),
 	).Scan(&id)
 
 	if err != nil {
-		if strings.Contains(err.Error(), "duplicate key") || strings.Contains(err.Error(), "unique constraint") {
+		if strings.Contains(err.Error(), "duplicate key") || strings.Contains(err.Error(), "unique constraint") || strings.Contains(err.Error(), "UNIQUE KEY") ||
+			strings.Contains(err.Error(), "Violation of UNIQUE KEY") {
 			writeJSONError(w, "username or email already exists", http.StatusConflict)
 			return
 		}
@@ -135,7 +136,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	var username string
 	var passwordHash string
 	err := DB.QueryRow(
-		`SELECT id, username, password_hash FROM users WHERE email = $1`,
+		`SELECT id, username, password_hash FROM users WHERE email = @p1`,
 		email,
 	).Scan(&id, &username, &passwordHash)
 

@@ -76,7 +76,7 @@ func profileHandler(w http.ResponseWriter, r *http.Request) {
 	var id int
 	var username, email string
 	err := DB.QueryRow(
-		`SELECT id, username, email FROM users WHERE id = $1`,
+		`SELECT id, username, email FROM users WHERE id = @p1`,
 		userID,
 	).Scan(&id, &username, &email)
 
