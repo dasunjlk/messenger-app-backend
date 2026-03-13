@@ -17,7 +17,7 @@ func InitDB() error {
 	connStr := os.Getenv("DATABASE_URL")
 	if connStr == "" {
 		// Default: MySQL (adjust user/password for your setup)
-		connStr = "root:YourPassword@tcp(localhost:3306)/messenger"
+		connStr = "root:Dasun#mysql2004@tcp(localhost:3306)/messenger"
 	}
 
 	var err error
