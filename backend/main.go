@@ -18,7 +18,7 @@ func main() {
 
 	// Public routes
 	mux.HandleFunc("/ping", enableCORS(pingHandler))
-	mux.HandleFunc("/register", enableCORS(RegisterHandler))
+	mux.HandleFunc("/register", enableCORS(registerRoute))
 	mux.HandleFunc("/login", enableCORS(loginRoute)) // GET=page, POST=API
 
 	// Protected routes (require JWT)
@@ -109,6 +109,15 @@ func loginRoute(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	LoginHandler(w, r)
+}
+
+// registerRoute: GET serves register page, POST calls RegisterHandler
+func registerRoute(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodGet {
+		http.ServeFile(w, r, filepath.Join("frontend", "register.html"))
+		return
+	}
+	RegisterHandler(w, r)
 }
 
 // serveFile serves a file from frontend/ directory

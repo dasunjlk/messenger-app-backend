@@ -1,48 +1,81 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 
 <head>
-  <meta name="charset" content="UTF-8">
-  <meta name="viewport" content="width=device-width, scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Login</title>
-  <link rel="stylesheet" href="Style.css" type="text/css">
+  <link rel="stylesheet" href="/style.css" />
 </head>
 
 <body>
-  <video autoplay muted loop class="bg_video">
-    <source src="asserts/14478075_1920_1080_30fps.mp4" type="video/mp4">
+  <video autoplay muted loop>
+    <source src="/asserts/14478075_1920_1080_30fps.mp4" type="video/mp4" />
   </video>
-  <div class="container">
-    <div class="details">
-      <h5>Welcome</h5>
-      <p>Sign in to you account or Create new account</p>
-    </div><br>
-    <div class="button_options">
-      <button>Login</button>
-      <button>Register</button>
-    </div>
-    <div class="forem">
-      <form method="post" action="#">
-        <label for="username">Full Name</label><br />
-        <input type="text" id="fullname" name="fullname"><br />
-        <label for="mail">Email</label><br />
-        <input type="email" id="mail" name="mail"><br />
-        <label for="password">Password</label><br />
-        <input type="password" id="pw" name="pw"><br />
-        <label for="cpassword">Confirm Password</label><br />
-        <input type="password" id="cpw" name="cpw"><br />
-        <button type="submit">Sign In<span>Create Account</span></button>
+  <main class="auth-container">
+    <section class="auth-card">
+      <h1>Sign In</h1>
+      <p class="subtitle">Sign in to your account</p>
+
+      <form id="login-form">
+        <label for="login-email">Email</label>
+        <input id="login-email" type="email" placeholder="Enter your email" required />
+
+        <label for="login-password">Password</label>
+        <input id="login-password" type="password" placeholder="Enter your password" required />
+
+        <p id="login-error" class="error-message hidden"></p>
+
+        <button type="submit" class="primary-btn">Sign In</button>
+
+        <p class="forgot-password">
+          <a href="/register">Don't have an account? Create one</a>
+        </p>
       </form>
-      <a href="#">Forgot Password</a>
-      <hr>
-      <p>Or continue with</p>
-      <div class="login_options">
-        <a href="#"><img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg">Google</a>
-        <a href="#"><img
-            src="https://purepng.com/public/uploads/large/purepng.com-apple-logologobrand-logoiconslogos-251519938788qhgdl.png">Apple</a>
-      </div>
-    </div>
-  </div>
+    </section>
+  </main>
+  <script>
+    const form = document.getElementById('login-form');
+    const errEl = document.getElementById('login-error');
+
+    function showError(msg) {
+      errEl.textContent = msg;
+      errEl.classList.remove('hidden');
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = document.getElementById('login-email').value.trim();
+      const password = document.getElementById('login-password').value;
+
+      if (!email) { showError('Please enter your email.'); return; }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showError('Please enter a valid email.'); return; }
+      if (!password) { showError('Please enter your password.'); return; }
+
+      errEl.classList.add('hidden');
+      const submitBtn = form.querySelector('button[type="submit"]');
+      submitBtn.disabled = true;
+
+      try {
+        const res = await fetch('/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+        const json = await res.json().catch(() => ({}));
+        if (res.ok && json.token) {
+          localStorage.setItem('token', json.token);
+          window.location.href = '/';
+        } else {
+          showError(json.error || 'Sign in failed.');
+        }
+      } catch (err) {
+        showError('Unable to connect. Please try again later.');
+      } finally {
+        submitBtn.disabled = false;
+      }
+    });
+  </script>
 </body>
 
 </html>
