@@ -9,22 +9,32 @@
 </head>
 
 <body>
+  <video autoplay muted loop class="bg-video">
+    <source src="/asserts/14478075_1920_1080_30fps.mp4" type="video/mp4">
+  </video>
+
   <main class="auth-container">
     <section class="auth-card">
-      <h1>Messenger</h1>
-      <p class="subtitle" id="profile-info">Loading...</p>
-      <div id="auth-actions">
-        <a href="/login" class="primary-btn" style="display:block;text-align:center;text-decoration:none;padding:0.78rem;">Sign In</a>
-        <p class="forgot-password" style="margin-top:1rem;">
-          <a href="/register">Create Account</a>
-        </p>
+      <span class="eyebrow">Messenger</span>
+      <h1>Stay connected.</h1>
+      <p class="subtitle" id="profile-info">Loading your status...</p>
+
+      <div id="auth-actions" class="hero-actions">
+        <a href="/login" class="primary-btn">Sign in</a>
+        <a href="/register" class="secondary-btn">Create account</a>
       </div>
+
       <div id="profile-content" class="hidden">
+        <div class="profile-meta">
+          <span class="pill" id="pill-username"></span>
+          <span class="pill" id="pill-email"></span>
+        </div>
         <pre id="profile-data"></pre>
         <button type="button" class="secondary-btn" id="logout-btn">Logout</button>
       </div>
     </section>
   </main>
+
   <script>
     const token = localStorage.getItem('token');
     const profileInfo = document.getElementById('profile-info');
@@ -32,34 +42,45 @@
     const profileContent = document.getElementById('profile-content');
     const profileData = document.getElementById('profile-data');
     const logoutBtn = document.getElementById('logout-btn');
+    const pillUsername = document.getElementById('pill-username');
+    const pillEmail = document.getElementById('pill-email');
+
+    function setSignedOut(message) {
+      profileInfo.textContent = message;
+      authActions.classList.remove('hidden');
+      profileContent.classList.add('hidden');
+    }
 
     if (!token) {
-      profileInfo.textContent = 'Sign in to continue';
+      setSignedOut('Sign in to view your profile.');
     } else {
-      profileInfo.textContent = 'Fetching profile...';
-      fetch('/profile', {
-        headers: { 'Authorization': 'Bearer ' + token }
-      })
-        .then(res => res.json())
-        .then(data => {
-          if (data.error) {
+      profileInfo.textContent = 'Fetching your profile...';
+      fetch('/profile', { headers: { 'Authorization': 'Bearer ' + token } })
+        .then(async (res) => {
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok || data.error) {
             localStorage.removeItem('token');
-            profileInfo.textContent = 'Session expired. Please sign in again.';
-          } else {
-            profileInfo.classList.add('hidden');
-            authActions.classList.add('hidden');
-            profileContent.classList.remove('hidden');
-            profileData.textContent = JSON.stringify(data, null, 2);
+            setSignedOut('Session expired. Please sign in again.');
+            return;
           }
+
+          profileInfo.textContent = 'Welcome back, ' + (data.username || 'friend') + '!';
+          authActions.classList.add('hidden');
+          profileContent.classList.remove('hidden');
+          pillUsername.textContent = 'Username: ' + (data.username || '-');
+          pillEmail.textContent = 'Email: ' + (data.email || '-');
+          profileData.textContent = JSON.stringify(data, null, 2);
         })
         .catch(() => {
-          profileInfo.textContent = 'Unable to fetch profile.';
+          setSignedOut('Unable to fetch profile right now.');
         });
     }
 
-    logoutBtn.addEventListener('click', () => {
+    logoutBtn?.addEventListener('click', () => {
       localStorage.removeItem('token');
-      window.location.reload();
+      localStorage.removeItem('username');
+      localStorage.removeItem('email');
+      window.location.href = '/login';
     });
   </script>
 </body>

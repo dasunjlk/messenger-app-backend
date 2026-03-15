@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strings"
 )
@@ -31,7 +32,10 @@ func main() {
 	})
 	mux.HandleFunc("/style.css", func(w http.ResponseWriter, r *http.Request) { serveFile(w, r, "style.css", "") })
 	mux.HandleFunc("/register.html", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet { http.Error(w, "method not allowed", http.StatusMethodNotAllowed); return }
+		if r.Method != http.MethodGet {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
 		http.ServeFile(w, r, filepath.Join("frontend", "register.html"))
 	})
 	mux.HandleFunc("/asserts/", func(w http.ResponseWriter, r *http.Request) {
@@ -76,7 +80,7 @@ func profileHandler(w http.ResponseWriter, r *http.Request) {
 	var id int
 	var username, email string
 	err := DB.QueryRow(
-		`SELECT id, username, email FROM users WHERE id = @p1`,
+		`SELECT id, username, email FROM users WHERE id = ?`,
 		userID,
 	).Scan(&id, &username, &email)
 
@@ -133,5 +137,11 @@ func serveFile(w http.ResponseWriter, r *http.Request, path, defaultFile string)
 		http.NotFound(w, r)
 		return
 	}
-	http.ServeFile(w, r, filepath.Join("frontend", path))
+	clean := filepath.Clean(path)
+	if strings.HasPrefix(clean, "..") || strings.Contains(clean, ".."+string(os.PathSeparator)) {
+		http.NotFound(w, r)
+		return
+	}
+
+	http.ServeFile(w, r, filepath.Join("frontend", clean))
 }
