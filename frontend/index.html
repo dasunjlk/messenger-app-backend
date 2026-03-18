@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Messenger</title>
+  <title>Messenger | Home</title>
   <link rel="stylesheet" href="/style.css" />
 </head>
 
@@ -16,72 +16,85 @@
   <main class="auth-container">
     <section class="auth-card">
       <span class="eyebrow">Messenger</span>
-      <h1>Stay connected.</h1>
-      <p class="subtitle" id="profile-info">Loading your status...</p>
+      <h1>Stay connected without the noise.</h1>
+      <p class="subtitle" id="status-text">Checking your session...</p>
 
-      <div id="auth-actions" class="hero-actions">
-        <a href="/login" class="primary-btn">Sign in</a>
-        <a href="/register" class="secondary-btn">Create account</a>
+      <div class="hero-actions" id="hero-actions">
+        <a class="primary-btn" href="/login">Sign in</a>
+        <a class="secondary-btn" href="/register">Create account</a>
       </div>
 
-      <div id="profile-content" class="hidden">
+      <div id="profile-card" class="hidden">
         <div class="profile-meta">
           <span class="pill" id="pill-username"></span>
           <span class="pill" id="pill-email"></span>
         </div>
-        <pre id="profile-data"></pre>
-        <button type="button" class="secondary-btn" id="logout-btn">Logout</button>
+        <pre id="profile-json"></pre>
+        <div class="form-actions">
+          <button class="secondary-btn" type="button" id="logout-btn">Logout</button>
+        </div>
       </div>
+
+      <p class="footer-note">Server endpoints: /register, /login, /profile, /ping</p>
     </section>
   </main>
 
   <script>
-    const token = localStorage.getItem('token');
-    const profileInfo = document.getElementById('profile-info');
-    const authActions = document.getElementById('auth-actions');
-    const profileContent = document.getElementById('profile-content');
-    const profileData = document.getElementById('profile-data');
-    const logoutBtn = document.getElementById('logout-btn');
+    const statusText = document.getElementById('status-text');
+    const heroActions = document.getElementById('hero-actions');
+    const profileCard = document.getElementById('profile-card');
+    const profileJson = document.getElementById('profile-json');
     const pillUsername = document.getElementById('pill-username');
     const pillEmail = document.getElementById('pill-email');
+    const logoutBtn = document.getElementById('logout-btn');
 
-    function setSignedOut(message) {
-      profileInfo.textContent = message;
-      authActions.classList.remove('hidden');
-      profileContent.classList.add('hidden');
+    function showSignedOut(message) {
+      statusText.textContent = message;
+      heroActions.classList.remove('hidden');
+      profileCard.classList.add('hidden');
     }
 
-    if (!token) {
-      setSignedOut('Sign in to view your profile.');
-    } else {
-      profileInfo.textContent = 'Fetching your profile...';
-      fetch('/profile', { headers: { 'Authorization': 'Bearer ' + token } })
-        .then(async (res) => {
-          const data = await res.json().catch(() => ({}));
-          if (!res.ok || data.error) {
-            localStorage.removeItem('token');
-            setSignedOut('Session expired. Please sign in again.');
-            return;
-          }
+    function showProfile(data) {
+      statusText.textContent = `Welcome back, ${data.username || 'friend'}!`;
+      heroActions.classList.add('hidden');
+      profileCard.classList.remove('hidden');
+      pillUsername.textContent = `Username: ${data.username || '-'}`;
+      pillEmail.textContent = `Email: ${data.email || '-'}`;
+      profileJson.textContent = JSON.stringify(data, null, 2);
+    }
 
-          profileInfo.textContent = 'Welcome back, ' + (data.username || 'friend') + '!';
-          authActions.classList.add('hidden');
-          profileContent.classList.remove('hidden');
-          pillUsername.textContent = 'Username: ' + (data.username || '-');
-          pillEmail.textContent = 'Email: ' + (data.email || '-');
-          profileData.textContent = JSON.stringify(data, null, 2);
-        })
-        .catch(() => {
-          setSignedOut('Unable to fetch profile right now.');
+    async function hydrate() {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        showSignedOut('Sign in to view your profile.');
+        return;
+      }
+
+      statusText.textContent = 'Fetching your profile...';
+      try {
+        const res = await fetch('/profile', {
+          headers: { 'Authorization': 'Bearer ' + token }
         });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || data.error) {
+          localStorage.removeItem('token');
+          showSignedOut('Session expired. Please sign in again.');
+          return;
+        }
+        showProfile(data);
+      } catch (err) {
+        statusText.textContent = 'Unable to reach the server right now.';
+      }
     }
 
     logoutBtn?.addEventListener('click', () => {
       localStorage.removeItem('token');
       localStorage.removeItem('username');
       localStorage.removeItem('email');
-      window.location.href = '/login';
+      showSignedOut('You are signed out.');
     });
+
+    hydrate();
   </script>
 </body>
 

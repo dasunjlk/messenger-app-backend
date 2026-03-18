@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Login | Messenger</title>
+  <title>Sign in | Messenger</title>
   <link rel="stylesheet" href="/style.css" />
 </head>
 
@@ -17,47 +17,52 @@
     <section class="auth-card">
       <span class="eyebrow">Messenger</span>
       <h1>Welcome back</h1>
-      <p class="subtitle">Sign in to pick up conversations without missing a beat.</p>
+      <p class="subtitle">Sign in to keep conversations in sync.</p>
 
-      <form id="login-form">
+      <form id="login-form" novalidate>
         <div>
           <label for="login-email">Email</label>
-          <input id="login-email" type="email" autocomplete="email" required />
+          <input id="login-email" type="email" name="email" autocomplete="email" required />
         </div>
-
         <div>
           <label for="login-password">Password</label>
-          <input id="login-password" type="password" autocomplete="current-password" required />
+          <input id="login-password" type="password" name="password" autocomplete="current-password" required />
         </div>
-
         <p id="login-error" class="error-message hidden"></p>
-
-        <button type="submit" class="primary-btn">Sign In</button>
+        <div class="form-actions">
+          <button type="submit" class="primary-btn">Sign in</button>
+          <a class="secondary-btn" href="/register">Create account</a>
+        </div>
       </form>
 
-      <p class="muted-action">Need an account? <a href="/register">Create one</a></p>
       <p class="muted-action"><a href="/">Back to home</a></p>
     </section>
   </main>
 
   <script>
     const form = document.getElementById('login-form');
-    const errEl = document.getElementById('login-error');
-    const btn = form.querySelector('button');
+    const errorEl = document.getElementById('login-error');
+    const submitBtn = form.querySelector('button');
 
     function showError(msg) {
-      errEl.textContent = msg;
-      errEl.classList.remove('hidden');
+      errorEl.textContent = msg;
+      errorEl.classList.remove('hidden');
     }
 
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
-      errEl.classList.add('hidden');
-      btn.disabled = true;
-      btn.textContent = 'Signing in...';
+      errorEl.classList.add('hidden');
 
       const email = document.getElementById('login-email').value.trim();
       const password = document.getElementById('login-password').value;
+
+      if (!email || !password) {
+        showError('Email and password are required.');
+        return;
+      }
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Signing in...';
 
       try {
         const res = await fetch('/login', {
@@ -65,10 +70,10 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email, password })
         });
-        const data = await res.json().catch(() => ({}));
 
-        if (!res.ok) {
-          showError(data.error || 'Unable to sign in. Check your details and try again.');
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || data.error) {
+          showError(data.error || 'Unable to sign in.');
         } else {
           localStorage.setItem('token', data.token);
           localStorage.setItem('username', data.username || '');
@@ -76,10 +81,10 @@
           window.location.href = '/';
         }
       } catch (err) {
-        showError('Cannot reach the server right now. Please try again.');
+        showError('Cannot reach the server right now.');
       } finally {
-        btn.disabled = false;
-        btn.textContent = 'Sign In';
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Sign in';
       }
     });
   </script>

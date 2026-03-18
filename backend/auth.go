@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"regexp"
 	"strings"
 	"time"
 
@@ -13,174 +14,168 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-// writeJSONError sends a JSON error response
-func writeJSONError(w http.ResponseWriter, msg string, status int) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(map[string]string{"error": msg})
-}
+var emailRegex = regexp.MustCompile(`^[^\s@]+@[^\s@]+\.[^\s@]+$`)
 
-// logRequestError logs an error and sends a 500 response
-func logRequestError(w http.ResponseWriter, context string, err error) {
-	log.Printf("%s: %v", context, err)
-	writeJSONError(w, "internal server error", http.StatusInternalServerError)
-}
-
-// jwtSecret is loaded from JWT_SECRET env var, or a default for development
-func getJWTSecret() []byte {
-	if s := os.Getenv("JWT_SECRET"); s != "" {
-		return []byte(s)
-	}
-	return []byte("your-secret-key-change-in-production")
-}
-
-// CustomClaims holds the JWT payload including user_id
+// CustomClaims represents the JWT payload we issue to clients.
 type CustomClaims struct {
 	UserID int `json:"user_id"`
 	jwt.RegisteredClaims
 }
 
-// RegisterRequest is the JSON body for POST /register
-type RegisterRequest struct {
+type registerRequest struct {
+	Email    string `json:"email"`
 	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
+type loginRequest struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
 }
 
-// LoginRequest is the JSON body for POST /login
-type LoginRequest struct {
-	Email    string `json:"email"`
-	Password string `json:"password"`
-}
-
-// RegisterHandler handles POST /register - creates a new user
-func RegisterHandler(w http.ResponseWriter, r *http.Request) {
+// registerHandler creates a new user and returns minimal profile data.
+func registerHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		writeJSONError(w, "method not allowed", http.StatusMethodNotAllowed)
+		methodNotAllowed(w)
 		return
 	}
 
-	var req RegisterRequest
+	var req registerRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSONError(w, "invalid request body", http.StatusBadRequest)
+		writeJSONError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
 
-	username := strings.TrimSpace(req.Username)
 	email := strings.TrimSpace(strings.ToLower(req.Email))
+	username := strings.TrimSpace(req.Username)
+	password := req.Password
 
+	if email == "" || !emailRegex.MatchString(email) {
+		writeJSONError(w, http.StatusBadRequest, "valid email is required")
+		return
+	}
 	if username == "" {
-		writeJSONError(w, "username is required", http.StatusBadRequest)
+		writeJSONError(w, http.StatusBadRequest, "username is required")
 		return
 	}
-	if email == "" {
-		writeJSONError(w, "email is required", http.StatusBadRequest)
-		return
-	}
-	if len(req.Password) < 6 {
-		writeJSONError(w, "password must be at least 6 characters", http.StatusBadRequest)
+	if len(password) < 6 {
+		writeJSONError(w, http.StatusBadRequest, "password must be at least 6 characters")
 		return
 	}
 
-	hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+	hashed, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
-		logRequestError(w, "bcrypt error", err)
+		logRequestError(w, "bcrypt", err)
 		return
 	}
 
-	result, err := DB.Exec(
+	res, err := DB.Exec(
 		`INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?)`,
-		username, email, string(hash),
+		username, email, string(hashed),
 	)
 	if err != nil {
-		if strings.Contains(err.Error(), "Duplicate") || strings.Contains(err.Error(), "duplicate key") ||
-			strings.Contains(err.Error(), "unique constraint") || strings.Contains(err.Error(), "UNIQUE KEY") ||
-			strings.Contains(err.Error(), "Violation of UNIQUE KEY") {
-			writeJSONError(w, "username or email already exists", http.StatusConflict)
+		if isDuplicateKeyError(err) {
+			writeJSONError(w, http.StatusConflict, "username or email already exists")
 			return
 		}
-		logRequestError(w, "database error", err)
+		logRequestError(w, "insert user", err)
 		return
 	}
-	id64, _ := result.LastInsertId()
-	id := int(id64)
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"id":       id,
+	id, _ := res.LastInsertId()
+	writeJSON(w, http.StatusCreated, map[string]interface{}{
+		"id":       int(id),
 		"username": username,
 		"email":    email,
 	})
 }
 
-// LoginHandler handles POST /login - authenticates user and returns JWT
-func LoginHandler(w http.ResponseWriter, r *http.Request) {
+// loginHandler authenticates a user and issues a JWT.
+func loginHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		writeJSONError(w, "method not allowed", http.StatusMethodNotAllowed)
+		methodNotAllowed(w)
 		return
 	}
 
-	var req LoginRequest
+	var req loginRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSONError(w, "invalid request body", http.StatusBadRequest)
+		writeJSONError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
 
 	email := strings.TrimSpace(strings.ToLower(req.Email))
-	if email == "" || req.Password == "" {
-		writeJSONError(w, "email and password are required", http.StatusBadRequest)
+	password := req.Password
+	if email == "" || password == "" {
+		writeJSONError(w, http.StatusBadRequest, "email and password are required")
 		return
 	}
 
 	var id int
-	var username string
-	var passwordHash string
-	err := DB.QueryRow(
-		`SELECT id, username, password_hash FROM users WHERE email = ?`,
-		email,
-	).Scan(&id, &username, &passwordHash)
-
+	var username, hash string
+	err := DB.QueryRow(`SELECT id, username, password_hash FROM users WHERE email = ?`, email).
+		Scan(&id, &username, &hash)
 	if err == sql.ErrNoRows {
-		writeJSONError(w, "invalid email or password", http.StatusUnauthorized)
+		writeJSONError(w, http.StatusUnauthorized, "invalid email or password")
 		return
 	}
 	if err != nil {
-		logRequestError(w, "database error", err)
+		logRequestError(w, "query user", err)
 		return
 	}
 
-	if err := bcrypt.CompareHashAndPassword([]byte(passwordHash), []byte(req.Password)); err != nil {
-		writeJSONError(w, "invalid email or password", http.StatusUnauthorized)
+	if err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password)); err != nil {
+		writeJSONError(w, http.StatusUnauthorized, "invalid email or password")
 		return
 	}
 
-	// Generate JWT
-	claims := CustomClaims{
-		UserID: id,
-		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
-			IssuedAt:  jwt.NewNumericDate(time.Now()),
-		},
-	}
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	tokenString, err := token.SignedString(getJWTSecret())
+	token, err := issueToken(id)
 	if err != nil {
-		logRequestError(w, "jwt error", err)
+		logRequestError(w, "sign token", err)
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"token":    tokenString,
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"token":    token,
 		"user_id":  id,
 		"username": username,
 		"email":    email,
 	})
 }
 
-// GenerateToken creates a JWT for a user (used by middleware for validation)
-func GenerateToken(userID int) (string, error) {
+// profileHandler returns the authenticated user's profile.
+func profileHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		methodNotAllowed(w)
+		return
+	}
+
+	userID, ok := GetUserID(r.Context())
+	if !ok {
+		writeJSONError(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+
+	var user struct {
+		ID       int    `json:"id"`
+		Username string `json:"username"`
+		Email    string `json:"email"`
+	}
+
+	err := DB.QueryRow(`SELECT id, username, email FROM users WHERE id = ?`, userID).
+		Scan(&user.ID, &user.Username, &user.Email)
+	if err == sql.ErrNoRows {
+		writeJSONError(w, http.StatusNotFound, "user not found")
+		return
+	}
+	if err != nil {
+		logRequestError(w, "query profile", err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, user)
+}
+
+func issueToken(userID int) (string, error) {
 	claims := CustomClaims{
 		UserID: userID,
 		RegisteredClaims: jwt.RegisteredClaims{
@@ -192,9 +187,8 @@ func GenerateToken(userID int) (string, error) {
 	return token.SignedString(getJWTSecret())
 }
 
-// ParseToken validates a JWT and returns the claims
-func ParseToken(tokenString string) (*CustomClaims, error) {
-	token, err := jwt.ParseWithClaims(tokenString, &CustomClaims{}, func(token *jwt.Token) (interface{}, error) {
+func parseToken(tokenString string) (*CustomClaims, error) {
+	token, err := jwt.ParseWithClaims(tokenString, &CustomClaims{}, func(t *jwt.Token) (interface{}, error) {
 		return getJWTSecret(), nil
 	})
 	if err != nil {
@@ -204,4 +198,33 @@ func ParseToken(tokenString string) (*CustomClaims, error) {
 		return claims, nil
 	}
 	return nil, jwt.ErrTokenInvalidClaims
+}
+
+func getJWTSecret() []byte {
+	if s := os.Getenv("JWT_SECRET"); s != "" {
+		return []byte(s)
+	}
+	return []byte("change-me-in-production")
+}
+
+func isDuplicateKeyError(err error) bool {
+	msg := strings.ToLower(err.Error())
+	return strings.Contains(msg, "duplicate") || strings.Contains(msg, "unique")
+}
+
+func writeJSON(w http.ResponseWriter, status int, body interface{}) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	if err := json.NewEncoder(w).Encode(body); err != nil {
+		log.Printf("write json: %v", err)
+	}
+}
+
+func writeJSONError(w http.ResponseWriter, status int, message string) {
+	writeJSON(w, status, map[string]string{"error": message})
+}
+
+func logRequestError(w http.ResponseWriter, context string, err error) {
+	log.Printf("%s: %v", context, err)
+	writeJSONError(w, http.StatusInternalServerError, "internal server error")
 }

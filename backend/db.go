@@ -2,48 +2,58 @@ package main
 
 import (
 	"database/sql"
+	"fmt"
 	"log"
 	"os"
+	"strings"
+	"time"
 
 	_ "github.com/go-sql-driver/mysql"
 )
 
-// DB is the global database connection.
+// DB is the shared database connection pool.
 var DB *sql.DB
 
-// InitDB connects to MySQL and creates the users table if it doesn't exist.
-// Uses DATABASE_URL environment variable (e.g., user:password@tcp(localhost:3306)/messenger).
+// InitDB connects to MySQL using DATABASE_URL and ensures the users table exists.
+// Example DSN: user:password@tcp(localhost:3306)/messenger?parseTime=true
 func InitDB() error {
-	connStr := os.Getenv("DATABASE_URL")
-	if connStr == "" {
-		// Default: MySQL (adjust user/password for your setup)
-		connStr = "root:Dasun#mysql2004@tcp(localhost:3306)/messenger"
+	dsn := os.Getenv("DATABASE_URL")
+	if dsn == "" {
+		dsn = "root:password@tcp(127.0.0.1:3306)/messenger?parseTime=true"
+	} else if !strings.Contains(dsn, "parseTime=") {
+		if strings.Contains(dsn, "?") {
+			dsn += "&parseTime=true"
+		} else {
+			dsn += "?parseTime=true"
+		}
 	}
 
-	var err error
-	DB, err = sql.Open("mysql", connStr)
+	conn, err := sql.Open("mysql", dsn)
 	if err != nil {
-		return err
+		return fmt.Errorf("open db: %w", err)
+	}
+	conn.SetMaxOpenConns(10)
+	conn.SetMaxIdleConns(5)
+	conn.SetConnMaxLifetime(30 * time.Minute)
+
+	if err := conn.Ping(); err != nil {
+		return fmt.Errorf("ping db: %w", err)
 	}
 
-	if err := DB.Ping(); err != nil {
-		return err
+	schema := `
+    CREATE TABLE IF NOT EXISTS users (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        username VARCHAR(255) NOT NULL UNIQUE,
+        email VARCHAR(255) NOT NULL UNIQUE,
+        password_hash VARCHAR(255) NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`
+
+	if _, err := conn.Exec(schema); err != nil {
+		return fmt.Errorf("ensure users table: %w", err)
 	}
 
-	// Create users table if not exists (MySQL syntax)
-	query := `
-	CREATE TABLE IF NOT EXISTS users (
-		id INT AUTO_INCREMENT PRIMARY KEY,
-		username VARCHAR(255) UNIQUE NOT NULL,
-		email VARCHAR(255) UNIQUE NOT NULL,
-		password_hash VARCHAR(255) NOT NULL,
-		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-	);
-	`
-	if _, err := DB.Exec(query); err != nil {
-		return err
-	}
-
-	log.Println("Database connected and users table ready")
+	DB = conn
+	log.Println("Database connected and schema ready")
 	return nil
 }

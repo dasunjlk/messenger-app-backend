@@ -1,147 +1,115 @@
 package main
 
 import (
-	"encoding/json"
 	"log"
 	"net/http"
 	"os"
 	"path/filepath"
-	"strings"
+	"time"
 )
 
+const frontendDir = "frontend"
+
 func main() {
-	// Connect to database
 	if err := InitDB(); err != nil {
 		log.Fatalf("database init failed: %v", err)
 	}
 
 	mux := http.NewServeMux()
 
-	// Public routes
-	mux.HandleFunc("/ping", enableCORS(pingHandler))
-	mux.HandleFunc("/register", enableCORS(registerRoute))
-	mux.HandleFunc("/login", enableCORS(loginRoute)) // GET=page, POST=API
+	// API routes
+	mux.HandleFunc("/ping", withCORS(pingHandler))
+	mux.HandleFunc("/healthz", withCORS(healthHandler))
+	mux.HandleFunc("/login", withCORS(loginRoute))
+	mux.HandleFunc("/login/", withCORS(loginRoute))
+	mux.HandleFunc("/register", withCORS(registerRoute))
+	mux.HandleFunc("/register/", withCORS(registerRoute))
+	mux.HandleFunc("/profile", withCORS(RequireAuth(profileHandler)))
 
-	// Protected routes (require JWT)
-	mux.HandleFunc("/profile", enableCORS(RequireAuth(profileHandler)))
+	// Static assets
+	mux.Handle("/asserts/", http.StripPrefix("/asserts/", http.FileServer(http.Dir(filepath.Join(frontendDir, "asserts")))))
+	mux.Handle("/style.css", http.FileServer(http.Dir(frontendDir)))
 
-	// Serve frontend static files (run from project root: go run ./backend)
-	mux.HandleFunc("/", serveFrontend)
-	mux.HandleFunc("/login/", func(w http.ResponseWriter, r *http.Request) {
-		serveFile(w, r, strings.TrimPrefix(strings.TrimPrefix(r.URL.Path, "/login"), "/"), "login.html")
-	})
-	mux.HandleFunc("/style.css", func(w http.ResponseWriter, r *http.Request) { serveFile(w, r, "style.css", "") })
-	mux.HandleFunc("/register.html", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet {
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
-		http.ServeFile(w, r, filepath.Join("frontend", "register.html"))
-	})
-	mux.HandleFunc("/asserts/", func(w http.ResponseWriter, r *http.Request) {
-		serveFile(w, r, strings.TrimPrefix(r.URL.Path, "/"), "")
-	})
+	mux.HandleFunc("/", serveIndex)
 
-	log.Println("Server running at http://localhost:8080")
-	log.Fatal(http.ListenAndServe(":8080", mux))
-}
-
-// enableCORS adds CORS headers for API requests
-func enableCORS(next http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
-		if r.Method == http.MethodOptions {
-			w.WriteHeader(http.StatusOK)
-			return
-		}
-		next(w, r)
+	addr := ":" + envOrDefault("PORT", "8080")
+	server := &http.Server{
+		Addr:              addr,
+		Handler:           mux,
+		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       15 * time.Second,
+		WriteTimeout:      15 * time.Second,
+		IdleTimeout:       60 * time.Second,
 	}
+
+	log.Printf("Server running at http://localhost%v", addr)
+	log.Fatal(server.ListenAndServe())
 }
 
 func pingHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("pong"))
 }
 
-// profileHandler returns the authenticated user's info (GET /profile, requires JWT)
-func profileHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		writeJSONError(w, "method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
-	userID, ok := GetUserID(r.Context())
-	if !ok {
-		writeJSONError(w, "unauthorized", http.StatusUnauthorized)
-		return
-	}
-
-	var id int
-	var username, email string
-	err := DB.QueryRow(
-		`SELECT id, username, email FROM users WHERE id = ?`,
-		userID,
-	).Scan(&id, &username, &email)
-
-	if err != nil {
-		writeJSONError(w, "user not found", http.StatusNotFound)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"id":       id,
-		"username": username,
-		"email":    email,
-	})
+func healthHandler(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
-// serveFrontend handles / and serves index.html
-func serveFrontend(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet || r.URL.Path != "/" {
+func serveIndex(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path != "/" {
 		http.NotFound(w, r)
 		return
 	}
-	http.ServeFile(w, r, filepath.Join("frontend", "index.html"))
+	if r.Method != http.MethodGet {
+		methodNotAllowed(w)
+		return
+	}
+	http.ServeFile(w, r, filepath.Join(frontendDir, "index.html"))
 }
 
-// loginRoute: GET serves login page, POST calls LoginHandler
 func loginRoute(w http.ResponseWriter, r *http.Request) {
-	if r.Method == http.MethodGet {
-		http.ServeFile(w, r, filepath.Join("frontend", "login.html"))
-		return
+	switch r.Method {
+	case http.MethodGet:
+		http.ServeFile(w, r, filepath.Join(frontendDir, "login.html"))
+	case http.MethodPost:
+		loginHandler(w, r)
+	default:
+		methodNotAllowed(w)
 	}
-	LoginHandler(w, r)
 }
 
-// registerRoute: GET serves register page, POST calls RegisterHandler
 func registerRoute(w http.ResponseWriter, r *http.Request) {
-	if r.Method == http.MethodGet {
-		http.ServeFile(w, r, filepath.Join("frontend", "register.html"))
-		return
+	switch r.Method {
+	case http.MethodGet:
+		http.ServeFile(w, r, filepath.Join(frontendDir, "register.html"))
+	case http.MethodPost:
+		registerHandler(w, r)
+	default:
+		methodNotAllowed(w)
 	}
-	RegisterHandler(w, r)
 }
 
-// serveFile serves a file from frontend/ directory
-func serveFile(w http.ResponseWriter, r *http.Request, path, defaultFile string) {
-	if r.Method != http.MethodGet {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-	if path == "" {
-		path = defaultFile
-	}
-	if path == "" {
-		http.NotFound(w, r)
-		return
-	}
-	clean := filepath.Clean(path)
-	if strings.HasPrefix(clean, "..") || strings.Contains(clean, ".."+string(os.PathSeparator)) {
-		http.NotFound(w, r)
-		return
-	}
+func withCORS(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
 
-	http.ServeFile(w, r, filepath.Join("frontend", clean))
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+
+		next(w, r)
+	}
+}
+
+func methodNotAllowed(w http.ResponseWriter) {
+	writeJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
+}
+
+func envOrDefault(key, fallback string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return fallback
 }
