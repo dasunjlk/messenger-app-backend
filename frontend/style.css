@@ -227,6 +227,56 @@ pre {
   font-size: 0.9rem;
 }
 
+.inline-inputs {
+  display: grid;
+  grid-template-columns: 160px 1fr;
+  gap: 12px;
+}
+
+.flex-1 {
+  flex: 1;
+}
+
+.chat-log {
+  margin-top: 18px;
+  max-height: 320px;
+  overflow-y: auto;
+  padding: 10px;
+  border: 1px solid var(--panel-strong);
+  border-radius: 14px;
+  background: rgba(0, 0, 0, 0.35);
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 10px;
+}
+
+.chat-row {
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--panel-strong);
+  line-height: 1.5;
+}
+
+.pill-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 10px 0 2px;
+}
+
+.pill-ghost {
+  background: transparent;
+  border-color: rgba(255, 255, 255, 0.18);
+  color: var(--muted);
+}
+
+@media (max-width: 720px) {
+  .inline-inputs {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (min-width: 900px) {
   .auth-container {
     grid-template-columns: 1.1fr 0.9fr;

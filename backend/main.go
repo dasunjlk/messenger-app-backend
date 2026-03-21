@@ -27,6 +27,7 @@ func main() {
 	mux.HandleFunc("/register", withCORS(registerRoute))
 	mux.HandleFunc("/register/", withCORS(registerRoute))
 	mux.HandleFunc("/profile", withCORS(RequireAuth(profileHandler)))
+	mux.HandleFunc("/chat", withCORS(chatRoute))
 	mux.HandleFunc("/ws", withCORS(websocketHandler(hub)))
 
 	// Static assets
@@ -67,6 +68,14 @@ func serveIndex(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	http.ServeFile(w, r, filepath.Join(frontendDir, "index.html"))
+}
+
+func chatRoute(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		methodNotAllowed(w)
+		return
+	}
+	http.ServeFile(w, r, filepath.Join(frontendDir, "chat.html"))
 }
 
 func loginRoute(w http.ResponseWriter, r *http.Request) {

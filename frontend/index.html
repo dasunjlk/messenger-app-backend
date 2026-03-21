@@ -31,6 +31,7 @@
         </div>
         <pre id="profile-json"></pre>
         <div class="form-actions">
+          <a class="primary-btn" href="/chat">Open chat</a>
           <button class="secondary-btn" type="button" id="logout-btn">Logout</button>
         </div>
       </div>
@@ -61,6 +62,9 @@
       pillUsername.textContent = `Username: ${data.username || '-'}`;
       pillEmail.textContent = `Email: ${data.email || '-'}`;
       profileJson.textContent = JSON.stringify(data, null, 2);
+      if (data.id) localStorage.setItem('user_id', data.id);
+      if (data.username) localStorage.setItem('username', data.username);
+      if (data.email) localStorage.setItem('email', data.email);
     }
 
     async function hydrate() {

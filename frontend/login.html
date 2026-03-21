@@ -76,6 +76,7 @@
           showError(data.error || 'Unable to sign in.');
         } else {
           localStorage.setItem('token', data.token);
+          localStorage.setItem('user_id', data.user_id);
           localStorage.setItem('username', data.username || '');
           localStorage.setItem('email', data.email || email);
           window.location.href = '/';

@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Chat | Messenger</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+
+<body>
+  <video autoplay muted loop class="bg-video">
+    <source src="/asserts/14478075_1920_1080_30fps.mp4" type="video/mp4">
+  </video>
+
+  <main class="auth-container">
+    <section class="auth-card">
+      <span class="eyebrow">Messenger</span>
+      <h1>Real-time chat</h1>
+      <p class="subtitle" id="status">Connecting...</p>
+
+      <div class="pill-row">
+        <span class="pill" id="pill-user"></span>
+        <span class="pill" id="pill-conn"></span>
+      </div>
+
+      <form id="chat-form" class="chat-form" autocomplete="off">
+        <div class="inline-inputs">
+          <div>
+            <label for="receiver">Receiver ID</label>
+            <input id="receiver" type="number" min="1" required />
+          </div>
+          <div class="flex-1">
+            <label for="message">Message</label>
+            <input id="message" type="text" placeholder="Say hi..." required />
+          </div>
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="primary-btn" id="send-btn">Send</button>
+          <a class="secondary-btn" href="/">Back home</a>
+        </div>
+      </form>
+
+      <div class="chat-log" id="chat-log"></div>
+    </section>
+  </main>
+
+  <script>
+    const statusEl = document.getElementById('status');
+    const chatForm = document.getElementById('chat-form');
+    const receiverInput = document.getElementById('receiver');
+    const messageInput = document.getElementById('message');
+    const chatLog = document.getElementById('chat-log');
+    const sendBtn = document.getElementById('send-btn');
+    const pillUser = document.getElementById('pill-user');
+    const pillConn = document.getElementById('pill-conn');
+
+    const token = localStorage.getItem('token');
+    const username = localStorage.getItem('username') || 'You';
+    const userId = parseInt(localStorage.getItem('user_id') || '0', 10);
+
+    if (!token) {
+      window.location.href = '/login';
+    }
+
+    pillUser.textContent = userId ? `${username} (#${userId})` : username;
+
+    function logMessage({ sender_id, receiver_id, content, created_at }) {
+      const row = document.createElement('div');
+      row.className = 'chat-row';
+      const from = sender_id === userId ? 'You' : `User ${sender_id}`;
+      const to = receiver_id === userId ? 'you' : `user ${receiver_id}`;
+      const ts = created_at ? new Date(created_at).toLocaleTimeString() : new Date().toLocaleTimeString();
+      row.innerHTML = `<span class="pill pill-ghost">${ts}</span> <strong>${from}</strong> → <strong>${to}</strong>: ${content}`;
+      chatLog.prepend(row);
+    }
+
+    let ws;
+
+    function connect() {
+      pillConn.textContent = 'Connecting...';
+      const scheme = window.location.protocol === 'https:' ? 'wss' : 'ws';
+      ws = new WebSocket(`${scheme}://${window.location.host}/ws?token=${encodeURIComponent(token)}`);
+
+      ws.onopen = () => {
+        statusEl.textContent = 'Connected';
+        pillConn.textContent = 'Live';
+      };
+
+      ws.onmessage = (ev) => {
+        try {
+          const msg = JSON.parse(ev.data);
+          logMessage(msg);
+        } catch (err) {
+          console.error('Bad message', err);
+        }
+      };
+
+      ws.onclose = () => {
+        statusEl.textContent = 'Disconnected. Reconnect by reloading.';
+        pillConn.textContent = 'Offline';
+      };
+
+      ws.onerror = () => {
+        statusEl.textContent = 'Connection error';
+        pillConn.textContent = 'Error';
+      };
+    }
+
+    chatForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      if (!ws || ws.readyState !== WebSocket.OPEN) {
+        statusEl.textContent = 'Socket not connected';
+        return;
+      }
+
+      const receiver = parseInt(receiverInput.value, 10);
+      const content = messageInput.value.trim();
+      if (!receiver || !content) return;
+
+      const payload = { type: 'message', receiver_id: receiver, content };
+      ws.send(JSON.stringify(payload));
+      messageInput.value = '';
+    });
+
+    connect();
+  </script>
+</body>
+
+</html>
