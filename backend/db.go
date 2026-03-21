@@ -53,6 +53,21 @@ func InitDB() error {
 		return fmt.Errorf("ensure users table: %w", err)
 	}
 
+	messagesSchema := `
+    CREATE TABLE IF NOT EXISTS messages (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        sender_id INT NOT NULL,
+        receiver_id INT NOT NULL,
+        content TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_messages_sender (sender_id),
+        INDEX idx_messages_receiver (receiver_id)
+    )`
+
+	if _, err := conn.Exec(messagesSchema); err != nil {
+		return fmt.Errorf("ensure messages table: %w", err)
+	}
+
 	DB = conn
 	log.Println("Database connected and schema ready")
 	return nil

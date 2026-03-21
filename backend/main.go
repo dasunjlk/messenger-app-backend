@@ -15,6 +15,8 @@ func main() {
 		log.Fatalf("database init failed: %v", err)
 	}
 
+	hub := NewHub()
+
 	mux := http.NewServeMux()
 
 	// API routes
@@ -25,6 +27,7 @@ func main() {
 	mux.HandleFunc("/register", withCORS(registerRoute))
 	mux.HandleFunc("/register/", withCORS(registerRoute))
 	mux.HandleFunc("/profile", withCORS(RequireAuth(profileHandler)))
+	mux.HandleFunc("/ws", withCORS(websocketHandler(hub)))
 
 	// Static assets
 	mux.Handle("/asserts/", http.StripPrefix("/asserts/", http.FileServer(http.Dir(filepath.Join(frontendDir, "asserts")))))
