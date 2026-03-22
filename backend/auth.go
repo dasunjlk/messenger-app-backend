@@ -69,10 +69,11 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	res, err := DB.Exec(
-		`INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?)`,
+	var id int
+	err = DB.QueryRow(
+		`INSERT INTO users (username, email, password_hash) VALUES ($1, $2, $3) RETURNING id`,
 		username, email, string(hashed),
-	)
+	).Scan(&id)
 	if err != nil {
 		if isDuplicateKeyError(err) {
 			writeJSONError(w, http.StatusConflict, "username or email already exists")
@@ -81,8 +82,6 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 		logRequestError(w, "insert user", err)
 		return
 	}
-
-	id, _ := res.LastInsertId()
 	writeJSON(w, http.StatusCreated, map[string]interface{}{
 		"id":       int(id),
 		"username": username,
@@ -112,7 +111,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 
 	var id int
 	var username, hash string
-	err := DB.QueryRow(`SELECT id, username, password_hash FROM users WHERE email = ?`, email).
+	err := DB.QueryRow(`SELECT id, username, password_hash FROM users WHERE email = $1`, email).
 		Scan(&id, &username, &hash)
 	if err == sql.ErrNoRows {
 		writeJSONError(w, http.StatusUnauthorized, "invalid email or password")
@@ -161,7 +160,7 @@ func profileHandler(w http.ResponseWriter, r *http.Request) {
 		Email    string `json:"email"`
 	}
 
-	err := DB.QueryRow(`SELECT id, username, email FROM users WHERE id = ?`, userID).
+	err := DB.QueryRow(`SELECT id, username, email FROM users WHERE id = $1`, userID).
 		Scan(&user.ID, &user.Username, &user.Email)
 	if err == sql.ErrNoRows {
 		writeJSONError(w, http.StatusNotFound, "user not found")

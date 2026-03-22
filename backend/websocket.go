@@ -149,24 +149,16 @@ func (c *Client) readPump() {
 			return
 		}
 
-		if incoming.Type == "" {
-			incoming.Type = defaultMessageType
-		}
 		incoming.SenderID = c.userID
 		incoming.Content = strings.TrimSpace(incoming.Content)
-		incoming.CreatedAt = time.Now()
 
-		if incoming.ReceiverID == 0 || incoming.Content == "" {
-			log.Printf("ws drop message user=%d: missing receiver or content", c.userID)
+		msg, err := persistMessage(incoming.SenderID, incoming.ReceiverID, incoming.ConversationID, incoming.Content)
+		if err != nil {
+			log.Printf("persist message failed for user=%d: %v", c.userID, err)
 			continue
 		}
 
-		if err := saveMessage(incoming); err != nil {
-			log.Printf("persist message failed: %v", err)
-			continue
-		}
-
-		c.hub.deliver(incoming)
+		c.hub.deliver(msg)
 	}
 }
 

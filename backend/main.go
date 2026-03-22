@@ -28,6 +28,8 @@ func main() {
 	mux.HandleFunc("/register/", withCORS(registerRoute))
 	mux.HandleFunc("/profile", withCORS(RequireAuth(profileHandler)))
 	mux.HandleFunc("/users", withCORS(RequireAuth(listUsersHandler)))
+	mux.HandleFunc("/messages", withCORS(RequireAuth(messagesHandler)))
+	mux.HandleFunc("/conversations", withCORS(RequireAuth(conversationsHandler)))
 	mux.HandleFunc("/chat", withCORS(chatRoute))
 	mux.HandleFunc("/ws", withCORS(websocketHandler(hub)))
 

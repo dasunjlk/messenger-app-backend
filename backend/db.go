@@ -5,30 +5,23 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"strings"
 	"time"
 
-	_ "github.com/go-sql-driver/mysql"
+	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
 // DB is the shared database connection pool.
 var DB *sql.DB
 
-// InitDB connects to MySQL using DATABASE_URL and ensures the users table exists.
-// Example DSN: user:password@tcp(localhost:3306)/messenger?parseTime=true
+// InitDB connects to PostgreSQL using DATABASE_URL and ensures core tables exist.
+// Example DSN: postgres://user:password@localhost:5432/messenger?sslmode=disable
 func InitDB() error {
 	dsn := os.Getenv("DATABASE_URL")
 	if dsn == "" {
-		dsn = "root:password@tcp(127.0.0.1:3306)/messenger?parseTime=true"
-	} else if !strings.Contains(dsn, "parseTime=") {
-		if strings.Contains(dsn, "?") {
-			dsn += "&parseTime=true"
-		} else {
-			dsn += "?parseTime=true"
-		}
+		dsn = "postgres://postgres:password@localhost:5432/messenger?sslmode=disable"
 	}
 
-	conn, err := sql.Open("mysql", dsn)
+	conn, err := sql.Open("pgx", dsn)
 	if err != nil {
 		return fmt.Errorf("open db: %w", err)
 	}
@@ -41,31 +34,56 @@ func InitDB() error {
 	}
 
 	schema := `
-    CREATE TABLE IF NOT EXISTS users (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        username VARCHAR(255) NOT NULL UNIQUE,
-        email VARCHAR(255) NOT NULL UNIQUE,
-        password_hash VARCHAR(255) NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )`
+CREATE TABLE IF NOT EXISTS users (
+    id SERIAL PRIMARY KEY,
+    username TEXT NOT NULL UNIQUE,
+    email TEXT NOT NULL UNIQUE,
+    password_hash TEXT NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS conversations (
+    id SERIAL PRIMARY KEY,
+    user1_id INT NOT NULL,
+    user2_id INT NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ensure uniqueness regardless of user order
+CREATE UNIQUE INDEX IF NOT EXISTS unique_conversation_pair
+    ON conversations (LEAST(user1_id, user2_id), GREATEST(user1_id, user2_id));
+ALTER TABLE conversations
+    ADD CONSTRAINT IF NOT EXISTS conversations_pair_unique UNIQUE (user1_id, user2_id);
+CREATE INDEX IF NOT EXISTS idx_conversations_user1 ON conversations(user1_id);
+CREATE INDEX IF NOT EXISTS idx_conversations_user2 ON conversations(user2_id);
+
+CREATE TABLE IF NOT EXISTS messages (
+    id SERIAL PRIMARY KEY,
+    conversation_id INT REFERENCES conversations(id) ON DELETE CASCADE,
+    sender_id INT NOT NULL,
+    receiver_id INT NOT NULL,
+    content TEXT NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- If messages table already existed, add missing columns/constraints.
+ALTER TABLE messages ADD COLUMN IF NOT EXISTS conversation_id INT;
+ALTER TABLE messages ADD COLUMN IF NOT EXISTS sender_id INT;
+ALTER TABLE messages ADD COLUMN IF NOT EXISTS receiver_id INT;
+ALTER TABLE messages ADD COLUMN IF NOT EXISTS content TEXT;
+ALTER TABLE messages ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE messages DROP CONSTRAINT IF EXISTS messages_conversation_id_fkey;
+ALTER TABLE messages
+  ADD CONSTRAINT messages_conversation_id_fkey
+  FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE;
+
+CREATE INDEX IF NOT EXISTS idx_messages_conversation ON messages(conversation_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_messages_sender ON messages(sender_id);
+CREATE INDEX IF NOT EXISTS idx_messages_receiver ON messages(receiver_id);
+`
 
 	if _, err := conn.Exec(schema); err != nil {
-		return fmt.Errorf("ensure users table: %w", err)
-	}
-
-	messagesSchema := `
-    CREATE TABLE IF NOT EXISTS messages (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        sender_id INT NOT NULL,
-        receiver_id INT NOT NULL,
-        content TEXT NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        INDEX idx_messages_sender (sender_id),
-        INDEX idx_messages_receiver (receiver_id)
-    )`
-
-	if _, err := conn.Exec(messagesSchema); err != nil {
-		return fmt.Errorf("ensure messages table: %w", err)
+		return fmt.Errorf("apply schema: %w", err)
 	}
 
 	DB = conn

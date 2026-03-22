@@ -3,13 +3,14 @@ package main
 import (
 	"log"
 	"net/http"
+	"time"
 )
 
 type userSummary struct {
-	ID        int    `json:"id"`
-	Username  string `json:"username"`
-	Email     string `json:"email"`
-	CreatedAt string `json:"created_at"`
+	ID        int       `json:"id"`
+	Username  string    `json:"username"`
+	Email     string    `json:"email"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 // listUsersHandler returns all registered users.
