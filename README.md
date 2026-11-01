@@ -1,3 +1,7 @@
+❌❌❌
+❌❌❌
+
+
 # Messenger App Backend
 
 Fresh rebuild with a minimal Go backend plus static HTML/CSS frontend for auth.
@@ -26,5 +30,3 @@ Fresh rebuild with a minimal Go backend plus static HTML/CSS frontend for auth.
 ## Dev helpers
 - Format: `gofmt -w backend/*.go`
 - Basic compile check: `go test ./...`
-
-# This project is Temporary paused. 
