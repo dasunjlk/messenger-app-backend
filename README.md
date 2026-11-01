@@ -27,4 +27,4 @@ Fresh rebuild with a minimal Go backend plus static HTML/CSS frontend for auth.
 - Format: `gofmt -w backend/*.go`
 - Basic compile check: `go test ./...`
 
-this is currently paused 
+This is currently paused 
